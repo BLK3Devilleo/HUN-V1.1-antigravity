@@ -1,26 +1,186 @@
 @import "tailwindcss";
 
+/* ============================================
+   NUH — Design System (Don Emilio Layout)
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Paleta principal de precisión */
+  --nuh-bg: #F2F2F2;           /* Gris Mercurio */
+  --nuh-card: #D9D9D9;         /* Gris Plata medio */
+  --nuh-card-hover: #CFCFCF;   /* Hover ligeramente más oscuro */
+  --nuh-text-primary: #000000; /* Negro Humo */
+  --nuh-text-secondary: #666666; /* Gris Dim */
+  --nuh-text-muted: #999999;
+
+  /* Gradiente Acento Primario */
+  --nuh-gradient-crear: linear-gradient(90deg, #FF61A6 0%, #FFB84D 100%);
+
+  /* Sombras sutiles */
+  --nuh-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --nuh-shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.08);
+
+  /* Radios */
+  --nuh-radius-sm: 8px;
+  --nuh-radius-md: 12px;
+  --nuh-radius-lg: 16px;       /* Para tarjetas inferiores */
+  --nuh-radius-xl: 24px;       /* Para widgets grandes */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--nuh-bg);
+  --color-foreground: var(--nuh-text-primary);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Anton', 'Impact', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================
+   Reset & Base
+   ============================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--nuh-bg);
+  color: var(--nuh-text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Tipografía Hero (NUH)
+   ============================================ */
+
+.nuh-title {
+  font-family: 'Anton', 'Impact', sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.85;
+  letter-spacing: -0.04em; /* Kerning negativo (-4% en base) */
+  color: var(--nuh-text-primary);
+  user-select: none;
+}
+
+/* ============================================
+   Folder Shape (Lengüeta superior de precisión)
+   ============================================ */
+
+.folder-shape {
+  position: relative;
+  background: var(--nuh-card);
+  border-radius: var(--nuh-radius-lg); /* 16px border radius */
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.folder-shape::before {
+  content: '';
+  position: absolute;
+  top: -12px; /* Altura 12px */
+  left: 0px;
+  width: 60px; /* Ancho 60px */
+  height: 12px;
+  background: var(--nuh-card);
+  border-radius: 6px 6px 0 0;
+  transition: background 0.2s ease;
+}
+
+.folder-shape:hover {
+  background: var(--nuh-card-hover);
+  box-shadow: var(--nuh-shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.folder-shape:hover::before {
+  background: var(--nuh-card-hover);
+}
+
+/* ============================================
+   Botón Crear (Gradiente animado de precisión)
+   ============================================ */
+
+.btn-crear {
+  background: var(--nuh-gradient-crear);
+  border: none;
+  color: #000000;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  background-size: 200% 200%;
+  animation: gradientShift 5s ease infinite;
+}
+
+.btn-crear:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(255, 97, 166, 0.2);
+  filter: brightness(1.02);
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ============================================
+   Tarjetas Apiladas (Content Stack 3D Desfase 8px)
+   ============================================ */
+
+.content-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.content-stack-card {
+  position: absolute;
+  background: var(--nuh-card);
+  border-radius: var(--nuh-radius-lg);
+  box-shadow: var(--nuh-shadow-card);
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1.5px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Tarjeta Principal (Base) */
+.content-stack-card:nth-child(1) {
+  z-index: 3;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  left: 0px;
+  bottom: 0px;
+}
+
+/* Segunda Tarjeta (+8px desfase arriba y derecha) */
+.content-stack-card:nth-child(2) {
+  z-index: 2;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  left: 8px;
+  bottom: 8px;
+}
+
+/* Tercera Tarjeta (+16px desfase arriba y derecha) */
+.content-stack-card:nth-child(3) {
+  z-index: 1;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  left: 16px;
+  bottom: 16px;
+}
+
+/* Hover: Se abren más en abanico */
+.content-stack:hover .content-stack-card:nth-child(2) {
+  transform: translate(4px, -4px);
+}
+
+.content-stack:hover .content-stack-card:nth-child(3) {
+  transform: translate(8px, -8px);
 }

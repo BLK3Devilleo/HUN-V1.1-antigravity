@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  hun-frontend:
+    container_name: hun-frontend-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_CENTRAL_URL=${NEXT_PUBLIC_SUPABASE_CENTRAL_URL}
+        - NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY=${NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY}
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      # --- Supabase Central ---
+      - NEXT_PUBLIC_SUPABASE_CENTRAL_URL=${NEXT_PUBLIC_SUPABASE_CENTRAL_URL}
+      - NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY=${NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY}
+      
+      # --- Cloudflare R2 Storage ---
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - NEXT_PUBLIC_R2_PUBLIC_URL=${NEXT_PUBLIC_R2_PUBLIC_URL}
+      
+      # --- Seguridad y Criptografía ---
+      - BYODB_ENCRYPTION_KEY=${BYODB_ENCRYPTION_KEY}
+      
+      # --- Ajustes del Entorno ---
+      - NODE_ENV=production
+      - PORT=3000
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

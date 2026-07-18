@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+.env*.local
+README.md
+Dockerfile
+docker-compose*.yml
+npm-debug.log
+out
+build
+C:\Users\LARM2\.gemini\antigravity\brain
