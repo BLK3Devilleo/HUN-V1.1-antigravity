@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   hun-frontend:
     container_name: hun-frontend-app
