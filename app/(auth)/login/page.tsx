@@ -13,11 +13,12 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
+      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/api/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           // Redirige al callback de auth de Next.js para procesar la whitelist en el middleware
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: redirectUrl,
         },
       });
       if (error) throw error;
