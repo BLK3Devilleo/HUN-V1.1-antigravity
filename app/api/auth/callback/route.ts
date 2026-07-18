@@ -40,14 +40,14 @@ export async function GET(request: Request) {
           set(name: string, value: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value, ...options });
-            } catch (error) {
+            } catch {
               // Si se invoca desde Server Component, se ignora
             }
           },
           remove(name: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value: '', ...options });
-            } catch (error) {
+            } catch {
               // Si se invoca desde Server Component, se ignora
             }
           },

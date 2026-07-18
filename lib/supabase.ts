@@ -13,20 +13,6 @@ export function createBrowserClient() {
 }
 
 /**
- * Crea un cliente Supabase Central estático del lado del servidor.
- * NOTA: Úsalo únicamente en contextos sin estado (scripts aislados) o Server Actions
- * donde creas la instancia fresca por petición para evitar fugas de sesión en SSR.
- */
-export function createCentralClient() {
-  return createClient(centralUrl, centralAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    }
-  });
-}
-
-/**
  * Crea una instancia dinámica del cliente Supabase local para la base de datos de la organización.
  * Esto nos permite ejecutar consultas e inserciones locales en la infraestructura del propio cliente (BYODB).
  */

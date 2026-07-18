@@ -38,7 +38,7 @@ export function decryptText(text: string): string | null {
     decrypted += decipher.final('utf8');
     
     return decrypted;
-  } catch (err) {
+  } catch {
     return null;
   }
 }

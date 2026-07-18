@@ -173,7 +173,7 @@ export async function getByodbStatus(): Promise<{
     if (decryptedUrl) {
       try {
         urlDomain = new URL(decryptedUrl).hostname;
-      } catch (e) {
+      } catch {
         urlDomain = decryptedUrl.split('/')[2] || null;
       }
     }
