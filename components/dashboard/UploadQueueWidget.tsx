@@ -3,72 +3,70 @@
 export default function UploadQueueWidget() {
   return (
     <div
-      className="w-full h-full relative"
+      className="w-full h-full flex flex-col"
       style={{
-        background: '#D9D9D9', // Gris Plata medio del contenedor
-        borderRadius: '16px', // Asumido
+        background: '#D9D9D9',
+        borderRadius: '16px',
         overflow: 'hidden',
       }}
     >
-      {/* Bloque principal (87.1% del alto) */}
-      <div 
-        className="w-full relative"
-        style={{ height: '87.1%' }}
-      >
-        {/* Texto "Subidas en fila" (padding top 16px, left 48px según PDF) */}
-        <div 
-          className="absolute flex items-center gap-2"
-          style={{ top: '16px', left: '48px' }}
-        >
-          <div className="w-2 h-2 rounded-full bg-[#FF4D4D]" />
-          <span className="text-xs font-bold text-[#000000]">
-            Subidas en fila
-          </span>
-        </div>
+      {/* Header: Red dot + Title */}
+      <div className="px-5 pt-4 pb-2 flex items-center gap-2">
+        <div className="w-2.5 h-2.5 rounded-full bg-[#FF4D4D]" />
+        <span className="text-sm font-bold text-[#000000]">
+          Subidas en fila
+        </span>
+      </div>
 
-        {/* Vista de contenido (300x200 centrado horizontalmente, padding superior 78px) */}
-        <div 
-          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center"
-          style={{ top: '78px', width: '85.7%', height: '49.4%' }}
-        >
-          {/* Imagen (Fondo de vista de contenido) */}
-          <div className="w-full h-full bg-[#E5E5E5] rounded-xl relative overflow-hidden flex items-end justify-center pb-3">
-            {/* Cápsula blanca con texto */}
-            <div className="bg-white px-4 py-2 rounded-full w-[90%] flex items-center justify-between shadow-sm">
-              <span className="text-xs font-bold text-black truncate">
-                Contenido sob...
-              </span>
-              {/* Dots */}
-              <div className="flex gap-1">
-                <div className="w-1 h-1 rounded-full bg-black/30" />
-                <div className="w-1 h-1 rounded-full bg-black/30" />
-                <div className="w-1 h-1 rounded-full bg-black/30" />
-              </div>
-            </div>
+      {/* Content preview area */}
+      <div className="flex-1 px-4 flex flex-col">
+        {/* Image preview */}
+        <div className="w-full flex-1 rounded-xl overflow-hidden relative bg-[#B0C4A8]">
+          {/* Nature image placeholder - gradient simulating trees/sky */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(180deg, #87CEEB 0%, #87CEEB 30%, #228B22 30%, #2E7D32 60%, #1B5E20 100%)',
+            }}
+          />
+          {/* 3 dots top-right */}
+          <div className="absolute top-3 right-3 flex gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-white/70" />
+            <div className="w-2 h-2 rounded-full bg-white/70" />
+            <div className="w-2 h-2 rounded-full bg-white/70" />
           </div>
-          
-          <p className="text-[10px] font-semibold text-[var(--nuh-text-secondary)] mt-4">
-            Cargando 12 más...
-          </p>
         </div>
+
+        {/* Caption below image */}
+        <p className="text-sm font-bold text-[#000000] mt-3">
+          Contenido sob...
+        </p>
+        <p className="text-xs text-[#666666] mt-1 mb-3">
+          Cargando 12 más...
+        </p>
       </div>
 
-      {/* Botón Ver Todo / Error en parte inferior (12.9% del alto = 100 - 87.1) */}
-      <div 
-        className="absolute bottom-[7px] w-full flex justify-center"
-        style={{ height: '11.4%' }}
+      {/* Red error banner */}
+      <button
+        className="w-full text-center text-sm font-bold text-white flex items-center justify-center"
+        style={{
+          height: '44px',
+          background: '#FF4D4D',
+        }}
       >
-        <button
-          className="text-center text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95 flex items-center justify-center rounded-lg"
-          style={{
-            width: '100%',
-            height: '100%',
-            background: '#FF4D4D',
-          }}
-        >
-          Falló 1 archivo
-        </button>
-      </div>
+        Falló 1 archivo
+      </button>
+
+      {/* "Ver todo" dark button */}
+      <button
+        className="w-full text-center text-sm font-semibold text-white flex items-center justify-center rounded-b-[16px]"
+        style={{
+          height: '44px',
+          background: '#333333',
+        }}
+      >
+        Ver todo
+      </button>
     </div>
   );
 }

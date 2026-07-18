@@ -7,8 +7,7 @@ interface StorageBarProps {
   totalGB?: number;
 }
 
-export default function StorageBar({ usedGB = 238, totalGB = 688 }: StorageBarProps) {
-  // Ocupación: 238 / 688 = 34.593%
+export default function StorageBar({ usedGB = 3238, totalGB = 3688 }: StorageBarProps) {
   const percentage = (usedGB / totalGB) * 100;
 
   return (
@@ -35,7 +34,7 @@ export default function StorageBar({ usedGB = 238, totalGB = 688 }: StorageBarPr
       </div>
 
       <p className="text-[10px] font-semibold text-[var(--nuh-text-secondary)]">
-        34.5% utilizado
+        {percentage.toFixed(1)}% utilizado
       </p>
     </div>
   );
