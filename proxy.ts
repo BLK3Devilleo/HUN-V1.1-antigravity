@@ -51,11 +51,26 @@ export async function proxy(request: NextRequest) {
   // Recuperar sesión: Se reemplaza getSession por getUser para validación real contra el servidor
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Función auxiliar para generar URLs de redirección seguras, evitando el bug de host "0.0.0.0" de Next.js
+  const getSafeRedirectUrl = (pathname: string, errorParam?: string) => {
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    let targetUrl: URL;
+    if (host && !host.includes('0.0.0.0')) {
+      targetUrl = new URL(pathname, `${proto}://${host}`);
+    } else {
+      targetUrl = request.nextUrl.clone();
+      targetUrl.pathname = pathname;
+    }
+    if (errorParam) {
+      targetUrl.searchParams.set('error', errorParam);
+    }
+    return targetUrl;
+  };
+
   // Si no está autenticado, redirigir al login
   if (!user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(getSafeRedirectUrl('/login'));
   }
 
   const userEmail = user.email;
@@ -78,10 +93,7 @@ export async function proxy(request: NextRequest) {
 
     if (error || !dbProfile) {
       await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('error', 'access_denied');
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(getSafeRedirectUrl('/login', 'access_denied'));
     }
     profile = dbProfile;
   }

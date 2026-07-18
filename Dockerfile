@@ -57,6 +57,5 @@ USER nextjs
 
 EXPOSE 3357
 ENV PORT=3357
-ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
