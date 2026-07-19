@@ -16,18 +16,26 @@ export default function DashboardPage() {
           TOP BAR: "Build For Venezuela" + "PRO" pills
           ========================================================= */}
       <div
-        className="absolute flex items-center gap-3"
-        style={{ top: '2.5vh', left: '2.3vw' }}
+        className="absolute flex items-center"
+        style={{ top: '4.1vh', left: '2.3vw', gap: '0.6vw' }}
       >
         <div
-          className="px-5 py-2 rounded-full text-sm font-semibold text-black"
-          style={{ background: '#C4C4C4' }}
+          className="rounded-full text-sm font-semibold text-black flex items-center justify-center select-none"
+          style={{
+            width: '15.5vw',
+            height: '5.9vh',
+            background: '#C4C4C4',
+          }}
         >
           Build For Venezuela
         </div>
         <div
-          className="px-5 py-2 rounded-full text-sm font-bold text-black"
-          style={{ background: '#C4C4C4' }}
+          className="px-6 rounded-full text-sm font-bold text-black flex items-center justify-center select-none"
+          style={{
+            width: '7vw',
+            height: '5.9vh',
+            background: '#C4C4C4',
+          }}
         >
           PRO
         </div>
