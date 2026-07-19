@@ -10,44 +10,57 @@ interface FolderCardProps {
 
 export default function FolderCard({ title, children, className = '' }: FolderCardProps) {
   return (
-    <div className={`relative w-full h-full flex flex-col group ${className} pt-4`}>
-      {/* Folder Tab Container */}
-      <div 
-        className="absolute left-2 z-10 transition-all duration-300 group-hover:-translate-y-1" 
-        style={{ top: '2px', width: '110px', height: '24px' }}
-      >
-        {/* Back layered tab (gives 3D depth) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#d1d1d1] to-[#e5e5e5] rounded-t-xl transform translate-x-2 -translate-y-1 shadow-inner" />
-        
-        {/* Main tab */}
-        <div className="absolute inset-0 bg-white/90 backdrop-blur-md border border-white/60 border-b-0 rounded-t-xl shadow-[0_-2px_15px_rgba(0,0,0,0.03)] flex items-center px-4" />
+    <div className={`relative w-full h-full flex flex-col ${className}`}>
+      {/* 
+        Pestañas del Folder (Efecto 3D en Cascada):
+        - Pestaña Trasera (Gris Oscuro #999999): Más a la izquierda y más arriba.
+        - Pestaña Delantera (Gris Claro #E0E0E0): Conectada al cuerpo de la carpeta.
+      */}
+      <div className="absolute left-0" style={{ top: '-16px', width: '90px', height: '16px' }}>
+        {/* Pestaña Trasera (Gris Oscuro) */}
+        <div
+          className="absolute"
+          style={{
+            top: '-2px',
+            left: '4px',
+            width: '76px',
+            height: '18px',
+            background: '#999999',
+            clipPath: 'polygon(0 100%, 0 0, 72% 0, 100% 100%)',
+            borderRadius: '6px 0 0 0',
+          }}
+        />
+        {/* Pestaña Delantera (Gris Claro, alineada con el cuerpo) */}
+        <div
+          className="absolute"
+          style={{
+            top: '2px',
+            left: '12px',
+            width: '76px',
+            height: '14px',
+            background: '#E0E0E0', // Gris claro idéntico al cuerpo
+            clipPath: 'polygon(0 100%, 0 0, 72% 0, 100% 100%)',
+            borderRadius: '4px 0 0 0',
+          }}
+        />
       </div>
 
-      {/* Folder Body */}
+      {/* Cuerpo de la Carpeta (Gris Claro #E0E0E0) */}
       <div
-        className="relative z-20 w-full h-full pt-6 pb-5 px-6 flex flex-col justify-between overflow-hidden transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1"
+        className="relative w-full h-full pt-4 pb-4 px-5 flex flex-col justify-between border border-[#CCCCCC]/50"
         style={{
-          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(242, 242, 242, 0.85) 100%)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderRadius: '24px',
-          border: '1px solid rgba(255, 255, 255, 1)',
-          boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1), inset 0 2px 10px rgba(255,255,255,0.8)',
+          background: '#E0E0E0',
+          borderRadius: '0 16px 16px 16px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
         }}
       >
-        {/* Ambient glow inside folder */}
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-pink-100/40 to-orange-100/40 rounded-full blur-2xl pointer-events-none" />
+        {/* Título de la Carpeta (Sans-Serif normal, no todo mayúsculas) */}
+        <span className="text-[13px] font-semibold text-[#1A1A1A] tracking-tight mb-2 block">
+          {title}
+        </span>
 
-        {/* Title */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 shadow-[0_0_8px_rgba(236,72,153,0.6)]" />
-          <span className="text-[13px] font-bold text-gray-800 tracking-tight uppercase letter-spacing-wider opacity-90">
-            {title}
-          </span>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 flex flex-col justify-center relative z-10">
+        {/* Contenido Interno */}
+        <div className="flex-1 flex flex-col justify-center">
           {children}
         </div>
       </div>
