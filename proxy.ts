@@ -72,7 +72,7 @@ export async function proxy(request: NextRequest) {
     } else {
       const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
       const proto = request.headers.get('x-forwarded-proto') || 'https';
-      
+
       // Filtrar hosts inválidos de Docker (0.0.0.0 o IDs hexadecimales de contenedor de 12 caracteres como 640865ac143b)
       const isInternalDockerHost = !host || host.includes('0.0.0.0') || /^[a-f0-9]{12}/i.test(host.split(':')[0]);
 
@@ -92,6 +92,13 @@ export async function proxy(request: NextRequest) {
 
   // Si no está autenticado, redirigir al login
   if (!user) {
+    if (process.env.NODE_ENV === 'development') {
+      // Bypass para desarrollo local: Inyecta un usuario mock directamente
+      response.headers.set('x-user-org-id', 'dev-org-00000000');
+      response.headers.set('x-user-role', 'owner');
+      response.headers.set('x-user-email', 'dev-user@example.com');
+      return response;
+    }
     return NextResponse.redirect(getSafeRedirectUrl('/login'));
   }
 
