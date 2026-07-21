@@ -1,5 +1,6 @@
 import { getByodbStatus } from '@/app/actions/byodb';
 import ConnectByodbForm from '@/components/ConnectByodbForm';
+import WebhookSettingsForm from './WebhookSettingsForm';
 import { headers } from 'next/headers';
 
 export default async function SettingsPage() {
@@ -97,19 +98,43 @@ export default async function SettingsPage() {
           )}
         </div>
 
-        {/* Card: Próximas Configuraciones (bloqueadas) */}
-        <div className="backdrop-blur-xl bg-white/3 border border-white/5 rounded-2xl p-6 shadow-xl opacity-50">
-          <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-4">
-            Cuentas de Redes Sociales
-          </h2>
-          <div className="flex items-center gap-3 text-xs text-white/30">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth="1.5"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="1.5"/>
-            </svg>
-            Disponible después de conectar la base de datos local
+        {/* Card: Webhooks y Orquestación (Solo Admin/Owner) */}
+        {(userRole === 'owner' || userRole === 'admin') ? (
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-sm font-semibold text-white/80 uppercase tracking-wide mb-1">
+                  Orquestador (n8n Webhooks)
+                </h2>
+                <p className="text-xs text-white/40 max-w-sm">
+                  Configura la URL de webhook donde se enviarán los eventos (como aprobación de causas) para iniciar la difusión en redes sociales.
+                </p>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <WebhookSettingsForm />
           </div>
-        </div>
+        ) : (
+          <div className="backdrop-blur-xl bg-white/3 border border-white/5 rounded-2xl p-6 shadow-xl opacity-50">
+            <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-4">
+              Orquestador (n8n Webhooks)
+            </h2>
+            <div className="flex items-center gap-3 text-xs text-white/30">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth="1.5"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="1.5"/>
+              </svg>
+              Solo los Administradores pueden configurar Webhooks.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -60,9 +60,17 @@ export async function saveMediaRecord(mediaUrl: string, fileName: string) {
       throw new Error(`Error en BD: ${dbError.message}`);
     }
 
-    // 4. Disparar Webhook a n8n
-    // Asegúrate de tener N8N_WEBHOOK_URL configurado en tu .env.local
-    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+    // 4. Obtener el Webhook Configurado de la Organización
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', profile.org_id)
+      .single();
+
+    const tenantWebhook = orgData?.settings?.n8n_webhook_url;
+    const webhookUrl = tenantWebhook || process.env.N8N_WEBHOOK_URL;
+
+    // 5. Disparar Webhook a n8n
     if (webhookUrl) {
       try {
         await fetch(webhookUrl, {
