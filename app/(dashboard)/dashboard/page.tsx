@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import Link from 'next/link';
 import SocialSidebar from '@/components/dashboard/SocialSidebar';
