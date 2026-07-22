@@ -25,9 +25,9 @@ const PROJECTS = [
     name: 'Organización número 1',
     posts: [
       { id: '1', title: 'Salvemos los árboles', active: true },
-      { id: '2', title: 'Esterilización de lomitos', active: false },
-      { id: '3', title: 'Técnicas de cuidado ambiental', active: false },
-      { id: '4', title: 'Cultivos en casa fáciles', active: false },
+      { id: '2', title: 'Esterilizacion de lomi...', active: false },
+      { id: '3', title: 'Técnicas de cuidado...', active: false },
+      { id: '4', title: 'Cultivos en casa fáci...', active: false },
     ],
   },
   {
@@ -73,13 +73,13 @@ export default function ConversationsSidebar({
   };
 
   return (
-    <div className="w-full flex flex-col justify-between h-full gap-4 select-none">
+    <div className="w-[15.5vw] flex flex-col justify-between h-[calc(100vh-14.9vh-4.0741vh)] gap-3 select-none">
       {/* CARD PRINCIPAL */}
-      <div className="w-full bg-[#D9D9D9] rounded-[28px] p-5 flex flex-col justify-between flex-1 shadow-sm overflow-hidden border border-black/5 min-h-[300px]">
+      <div className="w-full bg-[#D9D9D9] rounded-[24px] p-5 flex flex-col justify-between flex-1 shadow-sm overflow-hidden border border-black/5">
         <div className="flex flex-col gap-4">
           {/* Título de Organización */}
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black text-black uppercase tracking-wider truncate">
+            <span className="text-xs font-black text-black tracking-tight truncate">
               {activeProject.name}
             </span>
           </div>
@@ -87,28 +87,28 @@ export default function ConversationsSidebar({
           {/* Enlace directo a Galería de la Organización */}
           <Link
             href="/dashboard/gallery"
-            className="w-full py-2.5 px-3.5 rounded-xl bg-white hover:bg-black hover:text-white text-black text-xs font-black transition-all shadow-sm flex items-center justify-between group cursor-pointer"
+            className="w-full py-2 px-3 rounded-xl bg-white hover:bg-black hover:text-white text-black text-[11px] font-extrabold transition-all shadow-sm flex items-center justify-between group"
           >
-            <span className="truncate pr-1">🖼️ Ver Galería de Medios</span>
-            <span className="text-xs group-hover:translate-x-1 transition-transform flex-shrink-0">→</span>
+            <span>🖼️ Ver Galería de Medios</span>
+            <span className="text-xs group-hover:translate-x-0.5 transition-transform">→</span>
           </Link>
 
           {/* Lista de Carpetas / Publicaciones */}
-          <div className="flex flex-col gap-2 overflow-y-auto max-h-[320px] scrollbar-none pr-1">
+          <div className="flex flex-col gap-2 overflow-y-auto max-h-[42vh] scrollbar-none pr-1">
             {activeProject.posts.map((post) => {
               const isSelected = post.id === activePostId;
               return (
                 <div
                   key={post.id}
                   onClick={() => handlePostClick(post)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                  className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${
                     isSelected
-                      ? 'bg-black text-white font-black shadow-sm'
-                      : 'text-[#333333] hover:text-black hover:bg-black/5 font-semibold'
+                      ? 'bg-black/10 font-black text-black shadow-xs'
+                      : 'text-[#333333] hover:text-black hover:bg-black/5'
                   }`}
                 >
                   <svg
-                    className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-[#777777]'}`}
+                    className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-black' : 'text-[#777777]'}`}
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
@@ -124,7 +124,7 @@ export default function ConversationsSidebar({
         {/* Botón Crear Nuevo */}
         <button
           onClick={onBackToDashboard}
-          className="w-full py-3.5 px-4 mt-4 rounded-2xl bg-[#BFBFBF] hover:bg-black hover:text-white text-black text-xs font-black transition-all active:scale-95 text-center shadow-sm cursor-pointer"
+          className="w-full py-3 px-4 rounded-2xl bg-[#BFBFBF] hover:bg-black hover:text-white text-black text-xs font-black transition-all active:scale-95 text-center shadow-sm cursor-pointer"
         >
           + Crear nuevo
         </button>
@@ -134,7 +134,7 @@ export default function ConversationsSidebar({
       <div className="relative">
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full flex items-center justify-between px-5 py-3.5 rounded-full text-xs font-black bg-[#D9D9D9] hover:bg-[#CFCFCF] text-black transition-all active:scale-95 shadow-sm cursor-pointer border border-black/5"
+          className="w-full flex items-center justify-between px-5 py-3 rounded-full text-xs font-black bg-[#D9D9D9] hover:bg-[#CFCFCF] text-black transition-all active:scale-95 shadow-sm cursor-pointer"
         >
           <span className="truncate pr-2">{activeProject.name}</span>
           <svg
@@ -162,12 +162,12 @@ export default function ConversationsSidebar({
                 <button
                   key={proj.id}
                   onClick={() => handleOrgChange(proj.id)}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
                     proj.id === currentOrgId ? 'bg-black text-white' : 'hover:bg-neutral-100 text-black'
                   }`}
                 >
-                  <span className="truncate pr-2">{proj.name}</span>
-                  <span className="text-[10px] opacity-60 flex-shrink-0">({proj.posts.length})</span>
+                  <span className="truncate">{proj.name}</span>
+                  <span className="text-[10px] opacity-60">({proj.posts.length})</span>
                 </button>
               ))}
             </motion.div>

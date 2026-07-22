@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { publishPostAction } from '@/app/actions/post';
-import { Calendar as CalendarIcon, Check, Plus, ChevronLeft, ChevronRight, X, Image as ImageIcon } from 'lucide-react';
-import Link from 'next/link';
 
 interface SelectedMedia {
   file?: File;
@@ -23,11 +21,11 @@ const DEFAULT_IMAGES = [
 ];
 
 const SOCIAL_PLATFORMS = [
-  { id: 'facebook', name: 'Facebook', icon: 'f', color: '#1877F2', activeStyle: 'bg-[#1877F2] text-white shadow-[0_0_15px_rgba(24,119,242,0.8)] ring-2 ring-[#1877F2] scale-105' },
-  { id: 'instagram', name: 'Instagram', icon: '📷', color: '#E4405F', activeStyle: 'bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] text-white shadow-[0_0_15px_rgba(228,64,95,0.8)] ring-2 ring-[#E4405F] scale-105' },
-  { id: 'x', name: 'X', icon: '𝕏', color: '#000000', activeStyle: 'bg-black text-white shadow-[0_0_15px_rgba(255,255,255,0.6)] ring-2 ring-white/50 scale-105' },
-  { id: 'linkedin', name: 'LinkedIn', icon: 'in', color: '#0A66C2', activeStyle: 'bg-[#0A66C2] text-white shadow-[0_0_15px_rgba(10,102,194,0.8)] ring-2 ring-[#0A66C2] scale-105' },
-  { id: 'tiktok', name: 'TikTok', icon: '🎵', color: '#000000', activeStyle: 'bg-black text-white shadow-[0_0_15px_rgba(37,244,238,0.8)] ring-2 ring-[#25F4EE] scale-105' },
+  { id: 'facebook', name: 'Facebook', icon: 'f', color: '#1877F2', activeStyle: 'bg-[#1877F2] text-white shadow-[0_0_15px_rgba(24,119,242,0.8)] ring-2 ring-[#1877F2] scale-110' },
+  { id: 'instagram', name: 'Instagram', icon: '📷', color: '#E4405F', activeStyle: 'bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] text-white shadow-[0_0_15px_rgba(228,64,95,0.8)] ring-2 ring-[#E4405F] scale-110' },
+  { id: 'x', name: 'X', icon: '𝕏', color: '#000000', activeStyle: 'bg-black text-white shadow-[0_0_15px_rgba(255,255,255,0.6)] ring-2 ring-white/50 scale-110' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'in', color: '#0A66C2', activeStyle: 'bg-[#0A66C2] text-white shadow-[0_0_15px_rgba(10,102,194,0.8)] ring-2 ring-[#0A66C2] scale-110' },
+  { id: 'tiktok', name: 'TikTok', icon: '🎵', color: '#000000', activeStyle: 'bg-black text-white shadow-[0_0_15px_rgba(37,244,238,0.8)] ring-2 ring-[#25F4EE] scale-110' },
 ];
 
 export default function PostEditorWorkspace({
@@ -105,108 +103,120 @@ export default function PostEditorWorkspace({
   const isVideo = initialMedia[activeMediaIndex]?.isVideo || false;
 
   const handleAddImage = () => {
-    const nextImage = DEFAULT_IMAGES[thumbnails.length % DEFAULT_IMAGES.length];
+    const nextImage =
+      DEFAULT_IMAGES[thumbnails.length % DEFAULT_IMAGES.length];
     if (thumbnails.length < 7) {
       setThumbnails((prev) => [...prev, nextImage]);
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-[#D9D9D9] border border-black/10 rounded-[32px] p-5 sm:p-8 shadow-md flex flex-col items-center gap-6 select-none relative">
-      
-      {/* TÍTULO DE LA PUBLICACIÓN */}
-      <div className="w-full flex items-center justify-between border-b border-black/10 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-[#666666] uppercase tracking-widest">
-            Editor de Publicación
-          </span>
-        </div>
-        <h2 className="text-sm sm:text-base font-black text-black tracking-tight bg-white px-4 py-1.5 rounded-full shadow-sm">
-          {currentPostTitle}
-        </h2>
-      </div>
+    <div className="flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative">
+      {/* TÍTULO SUPERIOR CENTRADO */}
+      <h2 className="text-sm font-extrabold text-black tracking-tight mb-1 text-center bg-white/70 px-4 py-1 rounded-full shadow-sm">
+        {currentPostTitle}
+      </h2>
 
-      {/* ALERT MESSAGES */}
-      {statusMessage && (
-        <div
-          className={`w-full p-4 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-sm ${
-            statusType === 'success'
-              ? 'bg-emerald-100 border-emerald-300 text-emerald-900'
-              : 'bg-rose-100 border-rose-300 text-rose-900'
-          }`}
-        >
-          <span>{statusMessage}</span>
-          <button
-            onClick={() => setStatusMessage(null)}
-            className="text-xs font-black uppercase px-2 py-0.5 rounded-full bg-white/60 hover:bg-white text-black"
+      {/* CONTENEDOR DE PREVISUALIZACIÓN */}
+      <div className="relative w-full flex items-center justify-center">
+        <div className="bg-white/70 backdrop-blur-md border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3 items-center justify-between w-[56.8229vw] h-[36.8519vh] shadow-lg">
+          {/* COLUMNA IZQUIERDA: IMAGEN */}
+          <div
+            className="flex flex-col items-center justify-between h-full"
+            style={{ marginLeft: '1.3749%' }}
           >
-            ✕
-          </button>
-        </div>
-      )}
+            <div
+              className="aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center shadow-md"
+              style={{
+                height: '84.4221%',
+                marginTop: '3.7688%',
+              }}
+            >
+              {isVideo ? (
+                <video
+                  src={activeMediaUrl}
+                  controls
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={activeMediaUrl}
+                  alt="active-media"
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
 
-      {/* MAIN CONTAINER: RESPONSIVE GRID (MEDIA PREVIEW + TEXT AREA + SOCIAL LEDS) */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* PREVIEW CONTAINER (COL 8 DE 12 EN DESKTOP) */}
-        <div className="lg:col-span-10 bg-white/80 backdrop-blur-md border border-black/10 rounded-[28px] p-5 shadow-sm space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-            
-            {/* IMAGEN/VIDEO PREVIEW */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative w-full aspect-square max-w-[280px] rounded-[22px] overflow-hidden border border-black/10 bg-black/5 shadow-sm">
-                {isVideo ? (
-                  <video src={activeMediaUrl} controls className="w-full h-full object-cover" />
-                ) : (
-                  <img src={activeMediaUrl} alt="preview-active" className="w-full h-full object-cover" />
-                )}
-              </div>
-
-              {/* Paginación de puntos */}
-              <div className="flex items-center justify-center gap-1.5">
-                {thumbnails.map((_, idx) => (
-                  <button
+            {/* PUNTOS DE PAGINACIÓN */}
+            <div
+              className="flex items-center justify-center gap-1.5 w-full"
+              style={{ marginBottom: '3.7688%' }}
+            >
+              {Array.from({ length: Math.max(7, thumbnails.length) }).map(
+                (_, idx) => (
+                  <span
                     key={idx}
-                    onClick={() => setActiveMediaIndex(idx)}
-                    className={`rounded-full transition-all cursor-pointer ${
-                      idx === activeMediaIndex ? 'w-3 h-3 bg-black shadow-sm' : 'w-2 h-2 bg-[#BBBBBB]'
+                    className={`rounded-full transition-all ${
+                      idx === activeMediaIndex
+                        ? 'w-2.5 h-2.5 bg-black shadow-sm'
+                        : 'w-1.5 h-1.5 bg-[#BBBBBB]'
                     }`}
                   />
-                ))}
-              </div>
+                )
+              )}
             </div>
+          </div>
 
-            {/* PREVISUALIZACIÓN DE TEXTO / COPY */}
-            <div className="w-full h-full min-h-[180px] bg-white border border-black/10 rounded-[20px] p-4 flex flex-col justify-between shadow-inner">
-              <p className="text-xs font-semibold text-black leading-relaxed whitespace-pre-wrap">
-                {caption.trim() || 'Escribe una descripción a continuación para previsualizar como aparecerá en tus redes sociales...'}
+          {/* COLUMNA DERECHA: TEXTO */}
+          <div
+            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center shadow-inner"
+            style={{
+              height: '91.4573%',
+              marginRight: '1.3749%',
+            }}
+          >
+            {caption.trim() ? (
+              <p className="text-xs font-medium text-black leading-relaxed whitespace-pre-wrap">
+                {caption}
               </p>
-              <div className="pt-3 border-t border-black/5 flex items-center justify-between text-[10px] text-[#777777] font-bold">
-                <span>{caption.length} caracteres</span>
-                <span>{selectedPlatforms.length} redes activas</span>
-              </div>
-            </div>
-
+            ) : (
+              <span className="text-xs italic text-[#999999] font-normal">
+                Escribe una descripción para previsualizar...
+              </span>
+            )}
           </div>
         </div>
 
-        {/* BARRA DE REDES SOCIALES (COL 2 DE 12 EN DESKTOP / HORIZONTAL EN MOBILE) */}
-        <div className="lg:col-span-2 w-full flex flex-col items-center gap-3 bg-white/80 p-4 rounded-[28px] border border-black/10 shadow-sm">
-          <span className="text-[10px] font-black text-[#666666] uppercase tracking-wider text-center">
-            Redes
-          </span>
+        {/* BARRA DERECHA DE REDES SOCIALES CON EFECTO DE ILUMINACIÓN VIBRANTE */}
+        <div className="absolute left-[calc(50%+28.41145vw+1.2vw)] flex flex-col items-center gap-2">
+          <button className="w-11 h-11 bg-[#777777] hover:bg-black text-white rounded-full flex items-center justify-center shadow-md transition-all active:scale-95">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
 
-          <div className="flex flex-wrap lg:flex-col gap-2.5 justify-center">
+          {/* Barra vertical de redes con Iluminación LED de color correspondiente */}
+          <div className="bg-[#D9D9D9] p-1.5 rounded-full flex flex-col gap-2 border border-black/10 shadow-lg">
             {SOCIAL_PLATFORMS.map((plat) => {
               const isSelected = selectedPlatforms.includes(plat.id);
               return (
                 <button
                   key={plat.id}
                   onClick={() => togglePlatform(plat.id)}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 cursor-pointer ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 cursor-pointer ${
                     isSelected
                       ? plat.activeStyle
-                      : 'bg-black/70 text-white hover:bg-black hover:scale-105'
+                      : 'bg-black/70 text-white/80 hover:bg-black hover:scale-105'
                   }`}
                   title={`${plat.name} ${isSelected ? '(Seleccionada)' : ''}`}
                 >
@@ -228,101 +238,182 @@ export default function PostEditorWorkspace({
             })}
           </div>
         </div>
-
       </div>
 
-      {/* CARROUSEL DE MINIATURAS Y BOTÓN AÑADIR */}
-      <div className="w-full bg-white/80 p-4 rounded-[28px] border border-black/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        
-        <div className="flex items-center gap-3 overflow-x-auto w-full py-1 scrollbar-none">
-          {thumbnails.map((url, idx) => (
-            <div
-              key={idx}
-              onClick={() => setActiveMediaIndex(idx)}
-              className={`relative flex-shrink-0 w-16 h-16 rounded-[16px] overflow-hidden cursor-pointer border-2 transition-all ${
-                idx === activeMediaIndex
-                  ? 'border-black scale-105 shadow-md'
-                  : 'border-transparent opacity-70 hover:opacity-100'
-              }`}
-            >
-              <img src={url} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
-            </div>
-          ))}
+      {/* BARRA DE MINIATURAS */}
+      <div
+        className="flex flex-col items-center gap-1 w-[56.8229vw]"
+        style={{ marginTop: '.2vh' }}
+      >
+        <div className="w-full flex items-stretch justify-between">
+          <div className="w-[43.6458vw] h-[11.9444vh] bg-[#E5E5E5]/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[22px] p-3 px-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2.5">
+              {Array.from({ length: 7 }).map((_, idx) => {
+                const thumbUrl = thumbnails[idx];
+                const isActive = idx === activeMediaIndex;
 
-          {thumbnails.length < 7 && (
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => thumbUrl && setActiveMediaIndex(idx)}
+                    className={`w-14 h-14 rounded-2xl overflow-hidden cursor-pointer transition-all flex items-center justify-center ${thumbUrl
+                      ? isActive
+                        ? 'border-2 border-black scale-105 shadow-md'
+                        : 'border border-black/20 hover:border-black'
+                      : 'border-2 border-[#888888]/40 bg-white'
+                      }`}
+                  >
+                    {thumbUrl ? (
+                      <img
+                        src={thumbUrl}
+                        alt={`thumb-${idx}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div
+            className="flex flex-col justify-between"
+            style={{
+              width: '11.3021vw',
+              height: '11.9444vh',
+              marginLeft: '1.875vw',
+            }}
+          >
             <button
               onClick={handleAddImage}
-              className="flex-shrink-0 w-16 h-16 rounded-[16px] border-2 border-dashed border-black/20 hover:border-black bg-white flex flex-col items-center justify-center gap-1 text-black font-black transition-colors cursor-pointer"
+              style={{
+                width: '11.3021vw',
+                height: '5.6481vh',
+              }}
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-extrabold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
             >
-              <Plus className="w-5 h-5 stroke-[3]" />
-              <span className="text-[9px] uppercase tracking-wider font-extrabold">Añadir</span>
+              + Añadir
             </button>
-          )}
+
+            <button
+              style={{
+                width: '11.3021vw',
+                height: '5.6481vh',
+              }}
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-extrabold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
+            >
+              Imagen/Carrusel
+            </button>
+          </div>
         </div>
 
-        <Link
-          href="/dashboard/gallery"
-          className="flex-shrink-0 px-4 py-2.5 rounded-full bg-white hover:bg-black hover:text-white text-black border border-black/10 text-xs font-black transition-all shadow-sm flex items-center gap-2 cursor-pointer"
-        >
-          <ImageIcon className="w-4 h-4" />
-          <span>Mi Galería</span>
-        </Link>
+        {/* Flechas de navegación */}
+        <div className="w-[43.6458vw] flex items-center justify-center gap-6 text-[#666666] self-start mt-1">
+          <button
+            onClick={() => setActiveMediaIndex((prev) => Math.max(0, prev - 1))}
+            className="hover:text-black font-extrabold text-sm cursor-pointer"
+          >
+            ◄
+          </button>
+          <button
+            onClick={() => setActiveMediaIndex((prev) => Math.min(thumbnails.length - 1, prev + 1))}
+            className="hover:text-black font-extrabold text-sm cursor-pointer"
+          >
+            ►
+          </button>
+        </div>
       </div>
 
-      {/* CAJA DE TEXTO PARA ESCRIBIR DESCRIPCIÓN Y BOTONES DE ACCIÓN */}
-      <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-        
-        {/* TEXTAREA REDACCIÓN */}
-        <div className="sm:col-span-9">
+      {/* CAJA DE TEXTO INFERIOR */}
+      <div className="flex items-center gap-3 w-[56.8229vw] mt-2">
+        <div className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 shadow-sm min-h-[10vh]">
           <textarea
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            placeholder="Escribe la descripción de la publicación aquí..."
-            className="w-full min-h-[100px] p-4 rounded-[24px] bg-white border border-black/15 text-xs sm:text-sm font-medium text-black placeholder:text-[#999999] focus:outline-none focus:ring-2 focus:ring-black shadow-inner resize-none"
+            placeholder="Escribe la descripción de la publicación..."
+            rows={2}
+            className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
           />
         </div>
 
-        {/* BOTONES ACCIÓN: CALENDARIO Y PUBLICAR */}
-        <div className="sm:col-span-3 flex sm:flex-col items-center justify-center gap-3">
+        {/* BOTONES DE ACCIÓN (CALENDARIO PROGRAMACIÓN + CONFIRMAR Y PUBLICAR) */}
+        <div className="flex flex-col gap-2 relative">
           <button
             onClick={() => setIsCalendarOpen(true)}
-            className="w-full py-3.5 px-4 rounded-full bg-[#38BDF8] hover:bg-[#0284C7] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
-            title="Programar Fecha/Hora"
+            disabled={isPublishing}
+            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer disabled:opacity-50 hover:scale-105"
+            title="Abrir Calendario de Programación"
           >
-            <CalendarIcon className="w-4 h-4 stroke-[2.5]" />
-            <span>Programar</span>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
           </button>
 
           <button
             onClick={() => handlePublish(false)}
             disabled={isPublishing}
-            className="w-full py-3.5 px-4 rounded-full bg-black text-white hover:bg-neutral-800 disabled:opacity-50 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            className="w-11 h-11 bg-[#4A4A4A] hover:bg-black text-white rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer disabled:opacity-50 hover:scale-105"
+            title="Publicar Inmediatamente"
           >
             {isPublishing ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <>
-                <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-                <span>Publicar</span>
-              </>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             )}
           </button>
-        </div>
 
+          {/* Toast Notification */}
+          {statusMessage && (
+            <div
+              onClick={() => setStatusMessage(null)}
+              className={`absolute right-14 bottom-0 whitespace-nowrap px-4 py-2 rounded-full text-xs font-extrabold shadow-2xl cursor-pointer transition-all ${
+                statusType === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+              }`}
+            >
+              {statusMessage}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* MODAL INTERACTIVO DE CALENDARIO */}
+      {/* MODAL INTERACTIVO DE CALENDARIO Y PROGRAMACIÓN */}
       {isCalendarOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] max-w-sm w-full p-6 shadow-2xl border border-black/10 space-y-6">
-            <div className="flex items-center justify-between border-b border-black/10 pb-3">
+          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border border-white/50 space-y-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-[#38BDF8]" />
-                <h3 className="text-sm font-black text-black">Programar Publicación</h3>
+                <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-sky-600">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-black text-gray-900">Programar Publicación</h3>
               </div>
               <button
                 onClick={() => setIsCalendarOpen(false)}
-                className="w-7 h-7 rounded-full bg-neutral-100 hover:bg-black hover:text-white flex items-center justify-center text-black font-bold text-xs"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center"
               >
                 ✕
               </button>
@@ -330,49 +421,52 @@ export default function PostEditorWorkspace({
 
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-black uppercase text-[#666666] tracking-wider block mb-1">
-                  Fecha de Envío
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Fecha de Publicación
                 </label>
                 <input
                   type="date"
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-black/15 bg-neutral-50 text-xs font-bold text-black focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-[#666666] tracking-wider block mb-1">
-                  Hora Exacta
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Hora de Envío
                 </label>
                 <input
                   type="time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-black/15 bg-neutral-50 text-xs font-bold text-black focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
+              </div>
+
+              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 text-[11px] text-sky-800 font-medium">
+                💡 El orquestador de n8n enviará automáticamente la publicación a las redes seleccionadas ({selectedPlatforms.join(', ')}) en la fecha y hora indicadas.
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setIsCalendarOpen(false)}
-                className="w-1/2 py-3 rounded-full bg-neutral-100 hover:bg-neutral-200 text-black text-xs font-black uppercase tracking-wider"
+                className="flex-1 py-3 px-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider transition-all"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handlePublish(true)}
                 disabled={isPublishing}
-                className="w-1/2 py-3 rounded-full bg-black text-white hover:bg-neutral-800 text-xs font-black uppercase tracking-wider shadow-md"
+                className="flex-1 py-3 px-4 rounded-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-lg transition-all hover:scale-105"
               >
-                Confirmar
+                {isPublishing ? 'Programando...' : 'Confirmar Fecha'}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
