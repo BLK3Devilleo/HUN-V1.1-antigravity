@@ -30,7 +30,7 @@ export default function DashboardPage() {
     'org-3': 'Organización número 3',
   };
 
-  // Selector de multimedia al hacer clic en "Crear" o "+ Crear nuevo"
+  // Selector de multimedia
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files).map((file) => ({
@@ -39,22 +39,21 @@ export default function DashboardPage() {
         isVideo: file.type.startsWith('video/'),
       }));
       setSelectedFiles((prev) => [...prev, ...newFiles]);
-      // Entrar directamente al editor al seleccionar archivos
-      setIsEditorActive(true);
     }
   };
 
+  // Abrir el editor de forma inmediata al hacer clic en "Crear" o "+ Crear nuevo"
   const handleCrearClick = () => {
+    setActivePostTitle('Nueva Publicación');
+    setIsEditorActive(true);
+  };
+
+  const handleOpenFileInput = () => {
     fileInputRef.current?.click();
   };
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Iniciar transición al Editor
-  const handleConfirm = () => {
-    setIsEditorActive(true);
   };
 
   // Volver al Dashboard principal
@@ -68,7 +67,7 @@ export default function DashboardPage() {
   };
 
   const transitionProps: Transition = {
-    duration: 0.6,
+    duration: 0.4,
     ease: [0.25, 0.8, 0.25, 1],
   };
 
@@ -93,7 +92,7 @@ export default function DashboardPage() {
         style={{ top: '4.0741vh', left: '2.2917vw', gap: '0.6vw' }}
       >
         <div
-          className="rounded-full text-sm font-semibold text-black flex items-center justify-center select-none shadow-sm cursor-pointer hover:bg-[#B8B8B8] transition-colors"
+          className="rounded-full text-sm font-bold text-black flex items-center justify-center select-none shadow-sm cursor-pointer hover:bg-[#B8B8B8] transition-colors"
           style={{
             width: '15.5vw',
             height: '5.9vh',
@@ -170,7 +169,7 @@ export default function DashboardPage() {
             key="dashboard-buttons"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.3, y: 350 }}
+            exit={{ opacity: 0, scale: 1.2, y: 300 }}
             transition={transitionProps}
             className="absolute w-full flex flex-col items-center pointer-events-none z-30"
             style={{ top: '42vh', willChange: 'transform, opacity' }}
@@ -238,7 +237,7 @@ export default function DashboardPage() {
                 </AnimatePresence>
               </div>
 
-              {/* Botón Crear (Abre selector multimedia) */}
+              {/* Botón Crear -> Abre el Editor Workspace de forma inmediata */}
               <button
                 onClick={handleCrearClick}
                 className="btn-crear text-sm font-bold rounded-full flex items-center justify-center transition-transform active:scale-95 hover:opacity-90 shadow-md cursor-pointer"
@@ -247,54 +246,6 @@ export default function DashboardPage() {
                 + Crear
               </button>
             </div>
-
-            {/* PREVISUALIZACIÓN MULTIMEDIA Y BOTÓN CONFIRMAR */}
-            <AnimatePresence>
-              {selectedFiles.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="pointer-events-auto mt-4 p-2.5 px-4 rounded-2xl bg-white/90 backdrop-blur-md border border-black/10 shadow-xl flex items-center gap-4"
-                  style={{ maxWidth: '40vw' }}
-                >
-                  <div className="flex items-center gap-2.5 overflow-x-auto max-w-[28vw] py-1 scrollbar-none">
-                    {selectedFiles.map((media, idx) => (
-                      <div
-                        key={idx}
-                        className="relative group flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-black/10 bg-black/5 shadow-sm"
-                      >
-                        {media.isVideo ? (
-                          <video src={media.url} className="w-full h-full object-cover" />
-                        ) : (
-                          <img src={media.url} alt={`preview-${idx}`} className="w-full h-full object-cover" />
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveFile(idx);
-                          }}
-                          className="absolute top-0.5 right-0.5 bg-black/70 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Eliminar"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleConfirm}
-                    className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-black text-white hover:bg-neutral-800 transition-all active:scale-95 flex-shrink-0 shadow-md flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Editar</span>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -306,7 +257,7 @@ export default function DashboardPage() {
             key="dashboard-upload-queue"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, scale: 1.3, x: 500, y: -350 }}
+            exit={{ opacity: 0, scale: 1.2, x: 400, y: -300 }}
             transition={transitionProps}
             className="absolute z-20"
             style={{
@@ -340,18 +291,16 @@ export default function DashboardPage() {
               gap: '1.2vw',
             }}
           >
-            {/* Apartado 1: Contenido */}
             <motion.div
-              exit={{ opacity: 0, scale: 1.3, x: -500, y: 350 }}
+              exit={{ opacity: 0, scale: 1.2, x: -400, y: 300 }}
               transition={transitionProps}
               style={{ willChange: 'transform, opacity' }}
             >
               <ContentStack />
             </motion.div>
 
-            {/* Grupo de 4 Folders */}
             <motion.div
-              exit={{ opacity: 0, scale: 1.3, x: 600, y: 350 }}
+              exit={{ opacity: 0, scale: 1.2, x: 500, y: 300 }}
               transition={transitionProps}
               className="flex flex-1 items-end justify-end pointer-events-auto"
               style={{ gap: '1.2vw', height: '100%', willChange: 'transform, opacity' }}
@@ -399,16 +348,16 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* NUEVA VISTA: EDITOR DE PUBLICACIÓN */}
+      {/* VISTA DEL EDITOR DE PUBLICACIÓN */}
       <AnimatePresence>
         {isEditorActive && (
           <div className="absolute inset-0 z-20 pointer-events-none">
-            {/* Panel Izquierdo: Carpetas */}
+            {/* Panel Izquierdo */}
             <motion.div
               key="editor-sidebar"
-              initial={{ opacity: 0, scale: 0.8, x: -50 }}
+              initial={{ opacity: 0, scale: 0.9, x: -30 }}
               animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.8, x: -50 }}
+              exit={{ opacity: 0, scale: 0.9, x: -30 }}
               transition={transitionProps}
               className="pointer-events-auto absolute"
               style={{
@@ -425,7 +374,7 @@ export default function DashboardPage() {
               />
             </motion.div>
 
-            {/* Panel Central: Editor Workspace */}
+            {/* Panel Central */}
             <div
               className="absolute inset-x-0 flex justify-center pointer-events-none z-20"
               style={{
@@ -435,9 +384,9 @@ export default function DashboardPage() {
             >
               <motion.div
                 key="editor-workspace"
-                initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 30 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={transitionProps}
                 className="pointer-events-auto flex flex-col items-center justify-between"
                 style={{
