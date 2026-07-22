@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
+import Link from 'next/link';
 import SocialSidebar from '@/components/dashboard/SocialSidebar';
 import UploadQueueWidget from '@/components/dashboard/UploadQueueWidget';
 import FolderCard from '@/components/dashboard/FolderCard';
@@ -9,6 +10,7 @@ import ContentStack from '@/components/dashboard/ContentStack';
 import StorageBar from '@/components/dashboard/StorageBar';
 import ConversationsSidebar from '@/components/dashboard/ConversationsSidebar';
 import PostEditorWorkspace from '@/components/dashboard/PostEditorWorkspace';
+import { createBrowserClient } from '@/lib/supabase';
 
 interface SelectedMedia {
   file?: File;
@@ -23,6 +25,8 @@ export default function DashboardPage() {
   const [selectedOrg, setSelectedOrg] = useState('org-1');
   const [activePostTitle, setActivePostTitle] = useState('Salvemos los árboles');
   const [activeModal, setActiveModal] = useState<'org' | 'profile' | 'storage' | 'reach' | 'planner' | 'comments' | null>(null);
+
+  const supabase = createBrowserClient();
 
   const orgNames: Record<string, string> = {
     'org-1': 'Organización número 1',
@@ -42,21 +46,15 @@ export default function DashboardPage() {
     }
   };
 
-  // Abrir el editor de forma inmediata al hacer clic en "Crear" o "+ Crear nuevo"
   const handleCrearClick = () => {
     setActivePostTitle('Nueva Publicación');
     setIsEditorActive(true);
-  };
-
-  const handleOpenFileInput = () => {
-    fileInputRef.current?.click();
   };
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Volver al Dashboard principal
   const handleBackToDashboard = () => {
     setIsEditorActive(false);
   };
@@ -64,6 +62,11 @@ export default function DashboardPage() {
   const handleSelectPostFromSidebar = (postTitle: string) => {
     setActivePostTitle(postTitle);
     setIsEditorActive(true);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   const transitionProps: Transition = {
@@ -103,12 +106,13 @@ export default function DashboardPage() {
           Build 4 Venezuela
         </div>
         <div
-          className="px-6 rounded-full text-sm font-bold text-black flex items-center justify-center select-none shadow-sm"
+          className="px-6 rounded-full text-sm font-bold text-black flex items-center justify-center select-none shadow-sm cursor-pointer hover:bg-[#B8B8B8]"
           style={{
             width: '7vw',
             height: '5.9vh',
             background: '#C4C4C4',
           }}
+          onClick={() => setActiveModal('profile')}
         >
           PRO
         </div>
@@ -146,14 +150,14 @@ export default function DashboardPage() {
         </h1>
       </motion.div>
 
-      {/* SIDEBAR DE REDES */}
+      {/* SIDEBAR DE REDES Y NAVEGACIÓN COMPLETA */}
       <div
         className="absolute z-30"
         style={{
           top: '14.9vh',
           left: '2.2917vw',
           width: '5.2vw',
-          height: '40vh',
+          height: '42vh',
         }}
       >
         <SocialSidebar
@@ -237,7 +241,7 @@ export default function DashboardPage() {
                 </AnimatePresence>
               </div>
 
-              {/* Botón Crear -> Abre el Editor Workspace de forma inmediata */}
+              {/* Botón Crear */}
               <button
                 onClick={handleCrearClick}
                 className="btn-crear text-sm font-bold rounded-full flex items-center justify-center transition-transform active:scale-95 hover:opacity-90 shadow-md cursor-pointer"
@@ -401,6 +405,86 @@ export default function DashboardPage() {
                 />
               </motion.div>
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL INTERACTIVO DE PERFIL DE USUARIO Y NAVEGACIÓN */}
+      <AnimatePresence>
+        {activeModal === 'profile' && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[35px] max-w-md w-full p-8 shadow-2xl border border-white/50 space-y-6"
+            >
+              {/* Header Profile */}
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md">
+                    👤
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-gray-900">Mi Perfil de Usuario</h3>
+                    <p className="text-xs font-semibold text-gray-500">Sesión Activa NUH</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Accesos Directos a Páginas Clave */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                  Navegación Rápida
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/dashboard/feed"
+                    onClick={() => setActiveModal(null)}
+                    className="p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-2xl border border-emerald-200 flex items-center gap-2 text-xs font-black transition-all"
+                  >
+                    <span>🌐 Feed Global</span>
+                  </Link>
+                  <Link
+                    href="/dashboard/admin"
+                    onClick={() => setActiveModal(null)}
+                    className="p-3 bg-purple-50 hover:bg-purple-100 text-purple-900 rounded-2xl border border-purple-200 flex items-center gap-2 text-xs font-black transition-all"
+                  >
+                    <span>🛡️ Panel Admin</span>
+                  </Link>
+                  <Link
+                    href="/dashboard/gallery"
+                    onClick={() => setActiveModal(null)}
+                    className="p-3 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-2xl border border-blue-200 flex items-center gap-2 text-xs font-black transition-all"
+                  >
+                    <span>🖼️ Mi Galería</span>
+                  </Link>
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={() => setActiveModal(null)}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-900 rounded-2xl border border-slate-200 flex items-center gap-2 text-xs font-black transition-all"
+                  >
+                    <span>⚙️ Ajustes</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Botón Cerrar Sesión */}
+              <div className="pt-2">
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-3.5 px-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider transition-all shadow-md hover:scale-105 cursor-pointer"
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

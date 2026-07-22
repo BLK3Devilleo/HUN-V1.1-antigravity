@@ -25,9 +25,11 @@ const PLATFORMS: Platform[] = [
 ];
 
 const UTILS = [
+  { id: 'feed', label: 'Feed Global', color: '#10B981', href: '/dashboard/feed' },
+  { id: 'admin', label: 'Moderación Admin', color: '#7C3AED', href: '/dashboard/admin' },
   { id: 'gallery', label: 'Mi Galería', color: '#2563EB', href: '/dashboard/gallery' },
-  { id: 'settings', label: 'Ajustes', color: '#666666', href: '/dashboard/settings' },
-  { id: 'profile', label: 'Perfil', color: '#666666' },
+  { id: 'settings', label: 'Ajustes', color: '#4B5563', href: '/dashboard/settings' },
+  { id: 'profile', label: 'Mi Perfil', color: '#1F2937' },
 ];
 
 interface SocialSidebarProps {
@@ -50,6 +52,10 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>;
       case 'tiktok':
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>;
+      case 'feed':
+        return <svg viewBox="0 0 24 24" fill="white" className="w-[55%] h-[55%]"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" /></svg>;
+      case 'admin':
+        return <svg viewBox="0 0 24 24" fill="white" className="w-[55%] h-[55%]"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" /></svg>;
       case 'gallery':
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm1 2v10h14V7H5zm2 8l3-4 2.5 3L14 11l4 5H7z" /></svg>;
       case 'settings':
@@ -62,7 +68,7 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
   };
 
   return (
-    <div className={`flex flex-col gap-[3cqh] w-full h-full [container-type:size] ${expanded ? 'items-start' : 'items-center'}`}>
+    <div className={`flex flex-col gap-[2cqh] w-full h-full [container-type:size] ${expanded ? 'items-start' : 'items-center'}`}>
       <motion.div
         layout
         onClick={() => setExpanded(!expanded)}
@@ -77,9 +83,9 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         transition={sidebarTransition}
         style={{
           background: '#D9D9D9',
-          padding: expanded ? '4cqh 16px' : '4cqh 0',
+          padding: expanded ? '3cqh 16px' : '3cqh 0',
           overflow: 'hidden',
-          height: '82%',
+          height: '72%',
           willChange: 'transform, opacity',
         }}
       >
@@ -96,7 +102,7 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
                 <div
                   className="flex-shrink-0 aspect-square rounded-full flex items-center justify-center shadow-sm"
                   style={{
-                    width: 'min(60cqw, 14cqh)',
+                    width: 'min(55cqw, 12cqh)',
                     background: p.color,
                   }}
                 >
@@ -135,7 +141,8 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         </div>
       </motion.div>
 
-      <div className={`flex gap-[4cqw] w-full h-[15%] items-center ${expanded ? 'justify-start px-4' : 'justify-center'}`}>
+      {/* BOTONES DE NAVEGACIÓN Y UTILIDADES */}
+      <div className={`flex flex-wrap gap-[2cqw] w-full h-[25%] items-center ${expanded ? 'justify-start px-2' : 'justify-center'}`}>
         {UTILS.map((u) => {
           if (u.href) {
             return (
@@ -147,9 +154,9 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
                     scale: isTransitioning ? 1.2 : 1,
                   }}
                   transition={sidebarTransition}
-                  className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-sm"
+                  className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20"
                   style={{
-                    width: 'min(100cqw, 28cqh)',
+                    width: 'min(80cqw, 22cqh)',
                     background: u.color,
                     willChange: 'transform, opacity',
                   }}
@@ -171,9 +178,9 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
                 scale: isTransitioning ? 1.2 : 1,
               }}
               transition={sidebarTransition}
-              className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-sm"
+              className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20"
               style={{
-                width: 'min(100cqw, 28cqh)',
+                width: 'min(80cqw, 22cqh)',
                 background: u.color,
                 willChange: 'transform, opacity',
               }}
