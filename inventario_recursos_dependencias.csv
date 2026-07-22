@@ -1,0 +1,84 @@
+Categoria,Nombre_Recurso,Tipo_Especifico,Ubicacion_o_Origen,Version_o_Detalle,Descripcion_y_Proposito
+Dependencia NPM,next,Direct Dependency,package.json,16.2.10,Framework principal Fullstack React para renderizado SSR/SSG y App Router.
+Dependencia NPM,react,Direct Dependency,package.json,19.2.4,Librería de interfaz de usuario en React.
+Dependencia NPM,react-dom,Direct Dependency,package.json,19.2.4,Paquete DOM para la integración y renderizado de React en la web.
+Dependencia NPM,@supabase/supabase-js,Direct Dependency,package.json,^2.110.7,Cliente oficial JS de Supabase para consultas a la BD Central y BYODB.
+Dependencia NPM,@supabase/ssr,Direct Dependency,package.json,^0.12.3,Adaptador de Supabase para Next.js SSR (Manejo de Cookies y Clientes de Servidor).
+Dependencia NPM,@aws-sdk/client-s3,Direct Dependency,package.json,^3.1090.0,SDK S3 de AWS para la generación de comandos PutObject hacia Cloudflare R2.
+Dependencia NPM,@aws-sdk/s3-request-presigner,Direct Dependency,package.json,^3.1090.0,Generador de URLs pre-firmadas presigned para subidas seguras cliente->R2.
+Dependencia NPM,framer-motion,Direct Dependency,package.json,^12.42.2,Librería para animaciones fluidas y micro-interacciones en componentes UI.
+Dependencia NPM,lucide-react,Direct Dependency,package.json,^1.25.0,Conjunto de iconos vectoriales SVG para la interfaz del Dashboard.
+Dependencia NPM,react-hook-form,Direct Dependency,package.json,^7.81.0,Gestión eficiente de formularios dinámicos y estados de campos.
+Dependencia NPM,@hookform/resolvers,Direct Dependency,package.json,^5.4.0,Integración y validador de esquemas entre react-hook-form y Zod.
+Dependencia NPM,zod,Direct Dependency,package.json,^4.4.3,Librería de validación y tipado de esquemas runtime (formularios y payloads API).
+Dependencia NPM,tailwindcss,Dev Dependency,package.json,^4,Framework CSS utility-first para diseño visual moderno y responsivo.
+Dependencia NPM,@tailwindcss/postcss,Dev Dependency,package.json,^4,Plugin PostCSS para procesar la compilación CSS de Tailwind v4.
+Dependencia NPM,typescript,Dev Dependency,package.json,^5,Lenguaje de programación tipado estáticamente para JS.
+Dependencia NPM,@types/node,Dev Dependency,package.json,^20,Definiciones de tipos de TypeScript para el entorno Node.js.
+Dependencia NPM,@types/react,Dev Dependency,package.json,^19,Definiciones de tipos de TypeScript para React.
+Dependencia NPM,@types/react-dom,Dev Dependency,package.json,^19,Definiciones de tipos de TypeScript para React DOM.
+Dependencia NPM,eslint,Dev Dependency,package.json,^9,Linter de código para estandarización y calidad.
+Dependencia NPM,eslint-config-next,Dev Dependency,package.json,16.2.10,Configuración estándar de ESLint adaptada a reglas de Next.js.
+Servicio Externo,Supabase Central,BaaS Cloud,rbptlzqmfdxmucqkpvie.supabase.co,PostgreSQL + Auth,Base de datos central con Auth (auth.users) whitelist profiles organizations y causes.
+Servicio Externo,Supabase BYODB,BaaS Tenant (bring-your-own-db),Instancia del Cliente,PostgreSQL local/privado,Base de datos remota/privada del tenant para agendar posts colas tokens y media_files.
+Servicio Externo,Cloudflare R2,Object Storage S3-Compatible,cloudflarestorage.com,Bucket: hun-v01-oficial,Almacenamiento masivo de multimedia (imágenes/videos hasta 500MB) via Presigned URLs.
+Servicio Externo,n8n Automation,Webhook Gateway,N8N_WEBHOOK_URL,HTTP POST Webhook,Motor externo de automatización para la publicación multi-canal en redes sociales.
+Servicio Externo,Google Fonts,CDN / Font Loader,next/font/google,Inter Anton Barlow,Tipografías optimizadas para el diseño UI del proyecto NUH.
+Tabla Base de Datos,organizations,Tabla Central,supabase/migrations/001_schema_central.sql,PostgreSQL + RLS,Registro de empresas/tenants plan e historial de credenciales BYODB cifradas.
+Tabla Base de Datos,profiles,Tabla Central,supabase/migrations/001_schema_central.sql,PostgreSQL + RLS,Usuarios vinculados a auth.users con rol (owner admin member moderator) y org_id.
+Tabla Base de Datos,causes,Tabla Central,supabase/migrations/001_schema_central.sql,PostgreSQL + RLS,Causas globales aprobadas o pendientes de moderación en la plataforma central NUH.
+Tabla Base de Datos,cause_moderation_reviews,Tabla Central,supabase/migrations/001_schema_central.sql,PostgreSQL + RLS,Historial de revisiones de moderadores sobre las causas.
+Tabla Base de Datos,moderation_queue,Vista SQL Central,supabase/migrations/001_schema_central.sql,VIEW SQL,Vista filtrada con la cola de causas en estado 'pending_moderation'.
+Tabla Base de Datos,scheduled_posts,Tabla BYODB,supabase/migrations/002_schema_local_byodb.sql,PostgreSQL + RLS,Kanban de publicaciones programadas o borrador de la organización.
+Tabla Base de Datos,social_tokens,Tabla BYODB,supabase/migrations/002_schema_local_byodb.sql,PostgreSQL + RLS,Tokens de redes sociales (Instagram Facebook LinkedIn X) cifrados.
+Tabla Base de Datos,media_files,Tabla BYODB,supabase/migrations/002_schema_local_byodb.sql,PostgreSQL + RLS,Máquina de estados de archivos subidos (pending uploading ready published cleaned).
+Tabla Base de Datos,publish_queue,Tabla BYODB,supabase/migrations/002_schema_local_byodb.sql,PostgreSQL + RLS,Cola de envío multi-canal consultada por n8n con llave de idempotencia.
+Tabla Base de Datos,webhook_events,Tabla BYODB,supabase/migrations/002_schema_local_byodb.sql,PostgreSQL + RLS,Registro auditable de payloads y eventos enviados desde n8n o la App.
+Tabla Base de Datos,n8n_pending_queue,Vista SQL BYODB,supabase/migrations/002_schema_local_byodb.sql,VIEW SQL,Vista de ejecuciones pendientes listas para procesamiento por n8n.
+Ruta / Pagina App,/(auth)/login,Página Next.js,app/(auth)/login/page.tsx,Client Component,Pantalla de inicio de sesión con Supabase Auth e interfaz visual NUH.
+Ruta / Pagina App,/(dashboard)/dashboard,Página Next.js,app/(dashboard)/dashboard/page.tsx,Client Component,Panel principal con visualizador de causador borrador editor y cola de subidas.
+Ruta / Pagina App,/(dashboard)/feed,Página Next.js,app/(dashboard)/feed/page.tsx,Server Component,Feed social con reproducción de videos/imágenes de causas globales.
+Ruta / Pagina App,/(dashboard)/admin,Página Next.js,app/(dashboard)/admin/page.tsx,Server Component,Panel exclusivo para moderadores y administradores.
+Ruta / Pagina App,/(dashboard)/settings,Página Next.js,app/(dashboard)/settings/page.tsx,Server Component,Configuración de webhooks n8n y vinculación de base de datos BYODB.
+Ruta / Pagina App,/,Página Next.js,app/page.tsx,Redirect,Redirección automática hacia la ruta /dashboard.
+API Route,/api/auth/callback,Next.js Route Handler,app/api/auth/callback/route.ts,GET / exchangeCodeForSession,Manejo del callback OAuth PKCE de Supabase redirección segura contra host Docker.
+API Route,/api/r2/presign,Next.js Route Handler,app/api/r2/presign/route.ts,POST / presigned URL,Genera URL de carga temporal hacia Cloudflare R2 con validación Zod y org_id.
+Server Action,connectByodb,Server Action,app/actions/byodb.ts,byodb.ts:connectByodb,Valida conectividad del Supabase del cliente y guarda la URL/Key cifradas con AES-256-GCM.
+Server Action,getByodbStatus,Server Action,app/actions/byodb.ts,byodb.ts:getByodbStatus,Consulta si la organización actual tiene conectada una BD local (retorna solo dominio).
+Server Action,saveMediaRecord,Server Action,app/actions/media.ts,app/actions/media.ts:saveMediaRecord,Registra la causa borrador tras subir a R2 y dispara el webhook a n8n.
+Server Action,moderateCause,Server Action,app/actions/moderation.ts,app/actions/moderation.ts:moderateCause,Actualiza estado (approved/rejected) registra la review y dispara webhook si aprobó.
+Server Action,publishPostAction,Server Action,app/actions/post.ts,app/actions/post.ts:publishPostAction,Inserta post en BD central y envía payload completo al webhook de n8n.
+Server Action,saveN8nWebhook,Server Action,app/actions/settings.ts,app/actions/settings.ts:saveN8nWebhook,Guarda la URL personalizada del webhook n8n en el JSONB settings de la organización.
+Server Action,getN8nWebhook,Server Action,app/actions/settings.ts,app/actions/settings.ts:getN8nWebhook,Recupera la URL de webhook n8n configurada para la organización.
+Middleware,middleware.ts,Next.js Middleware,middleware.ts,Edge Request Interceptor,Intercepta rutas dashboard/api valida usuario SSR e inyecta x-user-org-id x-user-role.
+Componente UI,ConnectByodbForm,React Component,components/ConnectByodbForm.tsx,Client Form,Formulario interactivo para ingresar credenciales de Supabase local con validación Zod.
+Componente UI,WebhookSettingsForm,React Component,app/(dashboard)/settings/WebhookSettingsForm.tsx,Client Form,Formulario de configuración de URL de webhook de n8n.
+Componente UI,ModerationPanel,React Component,app/(dashboard)/admin/ModerationPanel.tsx,Client Interface,Panel de administración con tarjetas de causas pendientes botones Aprobar/Rechazar.
+Componente UI,ContentStack,React Component,components/dashboard/ContentStack.tsx,Client Component,Visualizador en tarjetas de publicaciones recientes y filtrado por estado.
+Componente UI,ConversationsSidebar,React Component,components/dashboard/ConversationsSidebar.tsx,Client Component,Barra lateral de conversaciones y actividades sociales de la causa.
+Componente UI,FolderCard,React Component,components/dashboard/FolderCard.tsx,Client Component,Tarjeta interactiva para carpetas de contenido multimedia.
+Componente UI,PostEditorWorkspace,React Component,components/dashboard/PostEditorWorkspace.tsx,Client Workspace,Espacio de trabajo para redacción de copy selección de redes y publicación inmediata.
+Componente UI,SocialSidebar,React Component,components/dashboard/SocialSidebar.tsx,Client Navigation,Barra lateral principal de navegación (Dashboard Feed Admin Ajustes etc.).
+Componente UI,StorageBar,React Component,components/dashboard/StorageBar.tsx,Client Widget,Indicador visual de espacio utilizado y capacidad de almacenamiento.
+Componente UI,UploadQueueWidget,React Component,components/dashboard/UploadQueueWidget.tsx,Client Drag&Drop Widget,Zona de subida de archivos cliente a R2 con barra de progreso en vivo.
+Libreria Interna,lib/supabase.ts,Helper Module,lib/supabase.ts,Browser & Local Clients,Instancia createBrowserClient y createLocalClient con inyección del header x-org-id.
+Libreria Interna,lib/r2.ts,Helper Module,lib/r2.ts,S3 Presigner,Instanciador de S3Client y generador de URL pre-firmadas para Cloudflare R2.
+Libreria Interna,lib/crypto.ts,Helper Module,lib/crypto.ts,AES-256-GCM,Cifrado (encryptText) y descifrado (decryptText) de textos y secretos en reposo.
+Libreria Interna,hooks/useR2Upload.ts,Custom React Hook,hooks/useR2Upload.ts,Client Hook,Hook de React que administra la petición presign y la subida via XMLHttpRequest con % de progreso.
+Variable Entorno,NEXT_PUBLIC_SUPABASE_CENTRAL_URL,Env Variable,.env.local / docker-compose.yml,Exposición Pública,URL pública del proyecto Supabase Central.
+Variable Entorno,NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY,Env Variable,.env.local / docker-compose.yml,Exposición Pública,Clave anónima pública del proyecto Supabase Central.
+Variable Entorno,SUPABASE_CENTRAL_SERVICE_ROLE_KEY,Env Variable,.env.local / Docker (Secreta),Secreto de Servidor,Clave service_role con acceso completo para bypass de RLS en el Middleware.
+Variable Entorno,R2_ACCOUNT_ID,Env Variable,.env.local / docker-compose.yml,Secreto de Servidor,ID de la cuenta de Cloudflare para el endpoint de R2 Storage.
+Variable Entorno,R2_ACCESS_KEY_ID,Env Variable,.env.local / docker-compose.yml,Secreto de Servidor,Clave de acceso S3/R2 para firma de peticiones.
+Variable Entorno,R2_SECRET_ACCESS_KEY,Env Variable,.env.local / docker-compose.yml,Secreto de Servidor,Clave secreta S3/R2 para firma de peticiones.
+Variable Entorno,R2_BUCKET_NAME,Env Variable,.env.local / docker-compose.yml,Secreto de Servidor,Nombre del Bucket en Cloudflare R2 (hun-v01-oficial).
+Variable Entorno,NEXT_PUBLIC_R2_PUBLIC_URL,Env Variable,.env.local / docker-compose.yml,Exposición Pública,URL del CDN/Public Domain de Cloudflare R2 para servir los medios subidos.
+Variable Entorno,BYODB_ENCRYPTION_KEY,Env Variable,.env.local / docker-compose.yml,Secreto de Servidor,Clave de 32 bytes para cifrar/descifrar las llaves BYODB en AES-256-GCM.
+Variable Entorno,N8N_WEBHOOK_URL,Env Variable,.env.local / docker-compose.yml,Secreto de Servidor,URL predeterminada del Webhook de n8n para disparar publicaciones si la org no define uno.
+Variable Entorno,NEXT_PUBLIC_APP_URL,Env Variable,.env.local / docker-compose.yml,Exposición Pública,URL pública del dominio de producción (ej: https://autom.filocentraldemando.site).
+Archivo Config,Dockerfile,Configuracion Docker,Dockerfile,Docker Multi-stage,Compilación standalone de Next.js en Node 22 Alpine optimizado para producción en puerto 3357.
+Archivo Config,docker-compose.yml,Configuracion Docker,docker-compose.yml,Orquestación Docker,Definición de servicio hun-frontend-app con paso de variables de entorno y límites de logs.
+Archivo Config,next.config.ts,Configuracion Next.js,next.config.ts,NextConfig,Configuración con output: 'standalone' para despliegue mínimo en contenedores.
+Archivo Config,tsconfig.json,Configuracion TypeScript,tsconfig.json,TS Compiler Config,Configuración de alias de rutas (@/*) e inclusión de tipos de Next.js.
+Archivo Config,eslint.config.mjs,Configuracion Linter,eslint.config.mjs,ESLint v9 Flat Config,Reglas de validación sintáctica de Next.js y React Core Web Vitals.
+Archivo Config,postcss.config.mjs,Configuracion CSS,postcss.config.mjs,PostCSS Config,Carga del plugin @tailwindcss/postcss para estilos v4.

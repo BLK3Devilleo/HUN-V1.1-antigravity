@@ -17,7 +17,6 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Redirige al callback de auth de Next.js para procesar la whitelist en el middleware
           redirectTo: redirectUrl,
         },
       });
@@ -29,34 +28,32 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0d0e12] p-4 text-white relative overflow-hidden">
-      {/* Luces de fondo estilo Nebula */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[120px]" />
-
+    <div className="flex min-h-screen items-center justify-center bg-[#D9D9D9] p-6 text-gray-900 relative overflow-hidden">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="w-full max-w-md backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-2xl shadow-2xl text-center relative z-10"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="w-full max-w-md bg-white border border-white/60 p-10 rounded-[35px] shadow-2xl text-center relative z-10 space-y-6"
       >
         {/* Pastilla Build For Venezuela */}
-        <div className="inline-block px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs text-blue-400 font-medium tracking-wide mb-6 uppercase">
-          Build For Venezuela
+        <div className="inline-block px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs font-black text-blue-600 uppercase tracking-widest">
+          Build 4 Venezuela
         </div>
 
-        <h1 className="text-4xl font-extrabold tracking-tight mb-2 bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
-          NUH
-        </h1>
-        <p className="text-sm text-gray-400 mb-8 font-light">
-          Central de Mando - Control de Publicación Masiva
-        </p>
+        <div>
+          <h1 className="text-4xl font-black tracking-tight text-gray-900">
+            NUH
+          </h1>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-1">
+            Central de Mando & Publicación Masiva
+          </p>
+        </div>
 
         {error && (
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-left font-light"
+            className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold text-left"
           >
             {error}
           </motion.div>
@@ -65,13 +62,12 @@ export default function LoginPage() {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 px-5 py-4 bg-white text-black hover:bg-gray-100 disabled:bg-gray-400 font-medium rounded-xl transition-all duration-300 shadow-lg shadow-white/5 hover:scale-[1.02]"
+          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-black text-white hover:bg-gray-800 disabled:opacity-50 font-black text-xs uppercase tracking-wider rounded-full transition-all duration-300 shadow-xl hover:scale-105"
         >
           {loading ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-black border-t-transparent" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
           ) : (
             <>
-              {/* Icono de Google svg */}
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
@@ -95,8 +91,8 @@ export default function LoginPage() {
           )}
         </button>
 
-        <div className="mt-8 text-xs text-gray-500 font-light">
-          Al acceder aceptas los Términos de Uso y Políticas de Privacidad.
+        <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider pt-2">
+          Acceso reservado para organizaciones autorizadas en Whitelist.
         </div>
       </motion.div>
     </div>

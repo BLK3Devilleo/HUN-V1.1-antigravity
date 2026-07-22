@@ -25,7 +25,8 @@ const PLATFORMS: Platform[] = [
 ];
 
 const UTILS = [
-  { id: 'settings', label: 'Ajustes', color: '#666666' },
+  { id: 'gallery', label: 'Mi Galería', color: '#2563EB', href: '/dashboard/gallery' },
+  { id: 'settings', label: 'Ajustes', color: '#666666', href: '/dashboard/settings' },
   { id: 'profile', label: 'Perfil', color: '#666666' },
 ];
 
@@ -49,6 +50,8 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>;
       case 'tiktok':
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>;
+      case 'gallery':
+        return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm1 2v10h14V7H5zm2 8l3-4 2.5 3L14 11l4 5H7z" /></svg>;
       case 'settings':
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z" /></svg>;
       case 'profile':
@@ -132,28 +135,25 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         </div>
       </motion.div>
 
-      <div className={`flex gap-[6cqw] w-full h-[15%] items-center ${expanded ? 'justify-start px-4' : 'justify-center'}`}>
+      <div className={`flex gap-[4cqw] w-full h-[15%] items-center ${expanded ? 'justify-start px-4' : 'justify-center'}`}>
         {UTILS.map((u) => {
-          const isSettings = u.id === 'settings';
-          const isProfile = u.id === 'profile';
-
-          if (isSettings) {
+          if (u.href) {
             return (
-              <Link key={u.id} href="/settings" className="block">
+              <Link key={u.id} href={u.href} className="block">
                 <motion.div
                   animate={{
-                    x: (!isSettings && isTransitioning) ? -300 : 0,
-                    opacity: (!isSettings && isTransitioning) ? 0 : 1,
-                    scale: (!isSettings && isTransitioning) ? 1.2 : 1,
+                    x: isTransitioning ? -300 : 0,
+                    opacity: isTransitioning ? 0 : 1,
+                    scale: isTransitioning ? 1.2 : 1,
                   }}
                   transition={sidebarTransition}
-                  className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+                  className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-sm"
                   style={{
-                    width: 'min(100cqw, 30cqh)',
+                    width: 'min(100cqw, 28cqh)',
                     background: u.color,
                     willChange: 'transform, opacity',
                   }}
-                  title="Configuración / Ajustes"
+                  title={u.label}
                 >
                   {renderIcon(u.id)}
                 </motion.div>
@@ -166,18 +166,18 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
               key={u.id}
               onClick={onOpenProfile}
               animate={{
-                x: (!isSettings && isTransitioning) ? -300 : 0,
-                opacity: (!isSettings && isTransitioning) ? 0 : 1,
-                scale: (!isSettings && isTransitioning) ? 1.2 : 1,
+                x: isTransitioning ? -300 : 0,
+                opacity: isTransitioning ? 0 : 1,
+                scale: isTransitioning ? 1.2 : 1,
               }}
               transition={sidebarTransition}
-              className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+              className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-sm"
               style={{
-                width: 'min(100cqw, 30cqh)',
+                width: 'min(100cqw, 28cqh)',
                 background: u.color,
                 willChange: 'transform, opacity',
               }}
-              title="Mi Perfil de Usuario"
+              title={u.label}
             >
               {renderIcon(u.id)}
             </motion.button>
