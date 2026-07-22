@@ -123,9 +123,18 @@ export default function DashboardPage() {
           scale: isEditorActive ? 0.22 : 1,
         }}
         transition={transitionProps}
-        className={`absolute flex flex-col items-center pointer-events-none z-10 ${isEditorActive ? 'origin-top-right' : 'origin-top'
-          }`}
+        className={`absolute flex flex-col items-center z-30 ${
+          isEditorActive
+            ? 'origin-top-right cursor-pointer pointer-events-auto hover:opacity-80 transition-opacity'
+            : 'origin-top pointer-events-none'
+        }`}
         style={{ willChange: 'transform, top, right, left' }}
+        onClick={() => {
+          if (isEditorActive) {
+            handleBackToDashboard();
+          }
+        }}
+        title={isEditorActive ? 'Volver al inicio' : undefined}
       >
         {!isEditorActive && (
           <p
@@ -415,7 +424,7 @@ export default function DashboardPage() {
               transition={transitionProps}
               className="pointer-events-auto absolute"
               style={{
-                top: '14.9vh',
+                top: '16.5741vh',
                 left: '2.2917vw',
                 bottom: '4.0741vh',
               }}
@@ -432,7 +441,7 @@ export default function DashboardPage() {
             <div
               className="absolute inset-x-0 flex justify-center pointer-events-none z-20"
               style={{
-                top: '14.9vh',
+                top: '16.5741vh',
                 bottom: '4.0741vh',
               }}
             >

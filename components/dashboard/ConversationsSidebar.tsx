@@ -70,9 +70,9 @@ export default function ConversationsSidebar({
   };
 
   return (
-    <div className="w-[15.5vw] flex flex-col justify-between h-[calc(100vh-14.9vh-4.0741vh)] gap-3 select-none">
+    <div className="w-[15.5vw] flex flex-col justify-between h-[calc(100vh-16.5741vh-4.0741vh)] gap-3 select-none">
       {/* CARD PRINCIPAL (Gris #D9D9D9 con bordes redondeados) */}
-      <div className="w-full bg-[#D9D9D9] rounded-[24px] p-5 flex flex-col justify-between flex-1 shadow-sm overflow-hidden">
+      <div className="w-full bg-[#D9D9D9] rounded-[24px] p-5 flex flex-col justify-between flex-1 overflow-hidden">
         <div className="flex flex-col gap-4">
           {/* Título de Organización */}
           <span className="text-xs font-semibold text-black tracking-tight px-1">
@@ -109,7 +109,7 @@ export default function ConversationsSidebar({
         {/* Botón Crear Nuevo en el fondo de la card */}
         <button
           onClick={onBackToDashboard}
-          className="w-full py-3 px-4 rounded-2xl bg-[#BFBFBF] hover:bg-[#B3B3B3] text-black text-xs font-bold transition-all active:scale-95 text-center shadow-sm"
+          className="w-full py-3 px-4 rounded-2xl bg-[#BFBFBF] hover:bg-[#B3B3B3] text-black text-xs font-bold transition-all active:scale-95 text-center"
         >
           Crear nuevo
         </button>
@@ -119,7 +119,7 @@ export default function ConversationsSidebar({
       <div className="relative">
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full flex items-center justify-between px-5 py-3 rounded-full text-xs font-semibold bg-[#D9D9D9] hover:bg-[#CFCFCF] text-black transition-all active:scale-95 shadow-sm"
+          className="w-full flex items-center justify-between px-5 py-3 rounded-full text-xs font-semibold bg-[#D9D9D9] hover:bg-[#CFCFCF] text-black transition-all active:scale-95"
         >
           <span className="truncate pr-2">{activeProject.name}</span>
           <svg
@@ -141,7 +141,7 @@ export default function ConversationsSidebar({
               initial={{ opacity: 0, y: 5, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
-              className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 shadow-2xl p-2 z-50 flex flex-col gap-1"
+              className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 p-2 z-50 flex flex-col gap-1"
             >
               {PROJECTS.map((proj) => (
                 <button
