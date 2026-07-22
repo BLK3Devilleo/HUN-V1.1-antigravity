@@ -21,11 +21,11 @@ const DEFAULT_IMAGES = [
 ];
 
 const SOCIAL_PLATFORMS = [
-  { id: 'facebook', name: 'Facebook', icon: 'f' },
-  { id: 'instagram', name: 'Instagram', icon: '📷' },
-  { id: 'x', name: 'X', icon: '𝕏' },
-  { id: 'linkedin', name: 'LinkedIn', icon: 'in' },
-  { id: 'tiktok', name: 'TikTok', icon: '🎵' },
+  { id: 'facebook', name: 'Facebook', icon: 'f', color: '#1877F2', activeStyle: 'bg-[#1877F2] text-white shadow-[0_0_15px_rgba(24,119,242,0.8)] ring-2 ring-[#1877F2] scale-110' },
+  { id: 'instagram', name: 'Instagram', icon: '📷', color: '#E4405F', activeStyle: 'bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] text-white shadow-[0_0_15px_rgba(228,64,95,0.8)] ring-2 ring-[#E4405F] scale-110' },
+  { id: 'x', name: 'X', icon: '𝕏', color: '#000000', activeStyle: 'bg-black text-white shadow-[0_0_15px_rgba(255,255,255,0.6)] ring-2 ring-white/50 scale-110' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'in', color: '#0A66C2', activeStyle: 'bg-[#0A66C2] text-white shadow-[0_0_15px_rgba(10,102,194,0.8)] ring-2 ring-[#0A66C2] scale-110' },
+  { id: 'tiktok', name: 'TikTok', icon: '🎵', color: '#000000', activeStyle: 'bg-black text-white shadow-[0_0_15px_rgba(37,244,238,0.8)] ring-2 ring-[#25F4EE] scale-110' },
 ];
 
 export default function PostEditorWorkspace({
@@ -35,10 +35,19 @@ export default function PostEditorWorkspace({
 }: PostEditorWorkspaceProps) {
   const [caption, setCaption] = useState('');
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-  const [selectedPlatform, setSelectedPlatform] = useState('facebook');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook', 'instagram']);
   const [isPublishing, setIsPublishing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'success' | 'error' | null>(null);
+
+  // Modal de Calendario de Programación
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  });
+  const [scheduledTime, setScheduledTime] = useState('14:00');
 
   const [thumbnails, setThumbnails] = useState<string[]>(
     initialMedia.length > 0
@@ -46,10 +55,20 @@ export default function PostEditorWorkspace({
       : DEFAULT_IMAGES
   );
 
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(id)
+        ? prev.length > 1
+          ? prev.filter((p) => p !== id)
+          : prev
+        : [...prev, id]
+    );
+  };
+
   const handlePublish = async (isScheduled = false) => {
     if (!caption.trim() && thumbnails.length === 0) {
       setStatusType('error');
-      setStatusMessage('Ingresa una descripción o multimedia.');
+      setStatusMessage('Ingresa una descripción o selecciona multimedia.');
       return;
     }
 
@@ -60,7 +79,7 @@ export default function PostEditorWorkspace({
       title: currentPostTitle,
       caption: caption || 'Publicación desde NUH Workspace',
       mediaUrls: thumbnails,
-      platforms: [selectedPlatform],
+      platforms: selectedPlatforms,
       orgId: activeOrgId,
     });
 
@@ -70,9 +89,10 @@ export default function PostEditorWorkspace({
       setStatusType('success');
       setStatusMessage(
         isScheduled
-          ? '🗓️ ¡Publicación programada exitosamente!'
+          ? `🗓️ ¡Programado para el ${scheduledDate} a las ${scheduledTime}!`
           : '✔️ ¡Publicación enviada a n8n y redes!'
       );
+      if (isScheduled) setIsCalendarOpen(false);
     } else {
       setStatusType('error');
       setStatusMessage(result.error || 'Error al publicar.');
@@ -82,7 +102,6 @@ export default function PostEditorWorkspace({
   const activeMediaUrl = thumbnails[activeMediaIndex] || DEFAULT_IMAGES[0];
   const isVideo = initialMedia[activeMediaIndex]?.isVideo || false;
 
-  // Manejar adición de nueva imagen
   const handleAddImage = () => {
     const nextImage =
       DEFAULT_IMAGES[thumbnails.length % DEFAULT_IMAGES.length];
@@ -94,24 +113,20 @@ export default function PostEditorWorkspace({
   return (
     <div className="flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative">
       {/* TÍTULO SUPERIOR CENTRADO */}
-      <h2 className="text-sm font-bold text-black tracking-tight mb-1 text-center">
+      <h2 className="text-sm font-extrabold text-black tracking-tight mb-1 text-center bg-white/70 px-4 py-1 rounded-full shadow-sm">
         {currentPostTitle}
       </h2>
 
-      {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) x 398px (36.8519vh) CENTRADO */}
+      {/* CONTENEDOR DE PREVISUALIZACIÓN */}
       <div className="relative w-full flex items-center justify-center">
-        {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO (IMAGEN + DOTS + DESCRIPCIÓN) - 1091px x 398px */}
-        <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3 items-center justify-between w-[56.8229vw] h-[36.8519vh] shadow-sm">
-          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN (SIEMPRE CUADRADO CON ASPECT-SQUARE, ALTO DE REFERENCIA 84.4221%) Y PUNTOS DE PAGINACIÓN */}
+        <div className="bg-white/70 backdrop-blur-md border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3 items-center justify-between w-[56.8229vw] h-[36.8519vh] shadow-lg">
+          {/* COLUMNA IZQUIERDA: IMAGEN */}
           <div
             className="flex flex-col items-center justify-between h-full"
-            style={{
-              marginLeft: '1.3749%',
-            }}
+            style={{ marginLeft: '1.3749%' }}
           >
-            {/* CONTENEDOR DE LA IMAGEN (336px x 336px) - SIEMPRE CUADRADO, TOMA DE REFERENCIA EL ALTO DEL CONTENEDOR GENERAL */}
             <div
-              className="aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center shadow-sm"
+              className="aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center shadow-md"
               style={{
                 height: '84.4221%',
                 marginTop: '3.7688%',
@@ -132,12 +147,10 @@ export default function PostEditorWorkspace({
               )}
             </div>
 
-            {/* PUNTOS DE PAGINACIÓN DE CARRUSEL (Centrados con la imagen, 15px = 3.7688% del borde inferior) */}
+            {/* PUNTOS DE PAGINACIÓN */}
             <div
               className="flex items-center justify-center gap-1.5 w-full"
-              style={{
-                marginBottom: '3.7688%',
-              }}
+              style={{ marginBottom: '3.7688%' }}
             >
               {Array.from({ length: Math.max(7, thumbnails.length) }).map(
                 (_, idx) => (
@@ -145,7 +158,7 @@ export default function PostEditorWorkspace({
                     key={idx}
                     className={`rounded-full transition-all ${
                       idx === activeMediaIndex
-                        ? 'w-2 h-2 bg-[#555555]'
+                        ? 'w-2.5 h-2.5 bg-black shadow-sm'
                         : 'w-1.5 h-1.5 bg-[#BBBBBB]'
                     }`}
                   />
@@ -154,30 +167,29 @@ export default function PostEditorWorkspace({
             </div>
           </div>
 
-          {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO (SE ADAPTA AUTOMÁTICAMENTE CON FLEX-1, ALTO DE 91.4573%, CENTRADO VERTICALMENTE) */}
+          {/* COLUMNA DERECHA: TEXTO */}
           <div
-            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center"
+            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center shadow-inner"
             style={{
               height: '91.4573%',
               marginRight: '1.3749%',
             }}
           >
             {caption.trim() ? (
-              <p className="text-xs font-normal text-black leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs font-medium text-black leading-relaxed whitespace-pre-wrap">
                 {caption}
               </p>
             ) : (
               <span className="text-xs italic text-[#999999] font-normal">
-                Descripción de contenido
+                Escribe una descripción para previsualizar...
               </span>
             )}
           </div>
         </div>
 
-        {/* BARRA DERECHA DE REDES SOCIALES (Ubicada al lado derecho del recuadro de 1091px con su separación) */}
+        {/* BARRA DERECHA DE REDES SOCIALES CON EFECTO DE ILUMINACIÓN VIBRANTE */}
         <div className="absolute left-[calc(50%+28.41145vw+1.2vw)] flex flex-col items-center gap-2">
-          {/* Botón superior chevron down */}
-          <button className="w-11 h-11 bg-[#888888] hover:bg-[#777777] text-white rounded-full flex items-center justify-center shadow-sm transition-transform active:scale-95">
+          <button className="w-11 h-11 bg-[#777777] hover:bg-black text-white rounded-full flex items-center justify-center shadow-md transition-all active:scale-95">
             <svg
               className="w-6 h-6"
               fill="none"
@@ -193,19 +205,20 @@ export default function PostEditorWorkspace({
             </svg>
           </button>
 
-          {/* Barra vertical de redes sociales */}
-          <div className="bg-[#D9D9D9] p-1 rounded-full flex flex-col gap-1.5 border border-black/10 shadow-sm">
+          {/* Barra vertical de redes con Iluminación LED de color correspondiente */}
+          <div className="bg-[#D9D9D9] p-1.5 rounded-full flex flex-col gap-2 border border-black/10 shadow-lg">
             {SOCIAL_PLATFORMS.map((plat) => {
-              const isSelected = selectedPlatform === plat.id;
+              const isSelected = selectedPlatforms.includes(plat.id);
               return (
                 <button
                   key={plat.id}
-                  onClick={() => setSelectedPlatform(plat.id)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isSelected
-                    ? 'bg-black text-white shadow-md scale-105'
-                    : 'bg-black/80 text-white/90 hover:bg-black'
-                    }`}
-                  title={plat.name}
+                  onClick={() => togglePlatform(plat.id)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 cursor-pointer ${
+                    isSelected
+                      ? plat.activeStyle
+                      : 'bg-black/70 text-white/80 hover:bg-black hover:scale-105'
+                  }`}
+                  title={`${plat.name} ${isSelected ? '(Seleccionada)' : ''}`}
                 >
                   {plat.id === 'facebook' && 'f'}
                   {plat.id === 'instagram' && (
@@ -227,15 +240,13 @@ export default function PostEditorWorkspace({
         </div>
       </div>
 
-      {/* BARRA INTERMEDIA DE CONTROL Y MINIATURAS (838px x 129px) + BOTONES (217px x 61px) - ANCHO TOTAL 1091px (56.8229vw) */}
+      {/* BARRA DE MINIATURAS */}
       <div
         className="flex flex-col items-center gap-1 w-[56.8229vw]"
         style={{ marginTop: '.2vh' }}
       >
         <div className="w-full flex items-stretch justify-between">
-          {/* Contenedor general de miniaturas (838px x 129px = 43.6458vw x 11.9444vh) */}
           <div className="w-[43.6458vw] h-[11.9444vh] bg-[#E5E5E5]/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[22px] p-3 px-4 flex items-center justify-between shadow-sm">
-            {/* Fila de 7 cajas de miniaturas */}
             <div className="flex items-center gap-2.5">
               {Array.from({ length: 7 }).map((_, idx) => {
                 const thumbUrl = thumbnails[idx];
@@ -265,7 +276,6 @@ export default function PostEditorWorkspace({
             </div>
           </div>
 
-          {/* Pila vertical de 2 botones de 217px x 61px (11.3021vw x 5.6481vh) con gap de 6px (0.5556vh) */}
           <div
             className="flex flex-col justify-between"
             style={{
@@ -274,55 +284,47 @@ export default function PostEditorWorkspace({
               marginLeft: '1.875vw',
             }}
           >
-            {/* Primer botón "+ Añadir" (217px x 61px) */}
             <button
               onClick={handleAddImage}
               style={{
                 width: '11.3021vw',
                 height: '5.6481vh',
               }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center"
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-extrabold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
             >
               + Añadir
             </button>
 
-            {/* Segundo botón "Imagen/Carrusel" (217px x 61px) */}
             <button
               style={{
                 width: '11.3021vw',
                 height: '5.6481vh',
               }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center"
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-extrabold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
             >
               Imagen/Carrusel
             </button>
           </div>
         </div>
 
-        {/* Flechas de navegación centradas debajo del contenedor de miniaturas */}
+        {/* Flechas de navegación */}
         <div className="w-[43.6458vw] flex items-center justify-center gap-6 text-[#666666] self-start mt-1">
           <button
-            onClick={() =>
-              setActiveMediaIndex((prev) => Math.max(0, prev - 1))
-            }
-            className="hover:text-black font-extrabold text-sm"
+            onClick={() => setActiveMediaIndex((prev) => Math.max(0, prev - 1))}
+            className="hover:text-black font-extrabold text-sm cursor-pointer"
           >
             ◄
           </button>
           <button
-            onClick={() =>
-              setActiveMediaIndex((prev) =>
-                Math.min(thumbnails.length - 1, prev + 1)
-              )
-            }
-            className="hover:text-black font-extrabold text-sm"
+            onClick={() => setActiveMediaIndex((prev) => Math.min(thumbnails.length - 1, prev + 1))}
+            className="hover:text-black font-extrabold text-sm cursor-pointer"
           >
             ►
           </button>
         </div>
       </div>
 
-      {/* CAJA DE TEXTO INFERIOR EN FORMA DE PÍLDORA CON BOTONES DE ACCIÓN */}
+      {/* CAJA DE TEXTO INFERIOR */}
       <div className="flex items-center gap-3 w-[56.8229vw] mt-2">
         <div className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 shadow-sm min-h-[10vh]">
           <textarea
@@ -334,13 +336,13 @@ export default function PostEditorWorkspace({
           />
         </div>
 
-        {/* Pila vertical de botones redondos (Calendario Azul + Confirmar Gris) */}
+        {/* BOTONES DE ACCIÓN (CALENDARIO PROGRAMACIÓN + CONFIRMAR Y PUBLICAR) */}
         <div className="flex flex-col gap-2 relative">
           <button
-            onClick={() => handlePublish(true)}
+            onClick={() => setIsCalendarOpen(true)}
             disabled={isPublishing}
-            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
-            title="Programar publicación"
+            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer disabled:opacity-50 hover:scale-105"
+            title="Abrir Calendario de Programación"
           >
             <svg
               className="w-5 h-5"
@@ -360,8 +362,8 @@ export default function PostEditorWorkspace({
           <button
             onClick={() => handlePublish(false)}
             disabled={isPublishing}
-            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
-            title="Confirmar y publicar"
+            className="w-11 h-11 bg-[#4A4A4A] hover:bg-black text-white rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer disabled:opacity-50 hover:scale-105"
+            title="Publicar Inmediatamente"
           >
             {isPublishing ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -382,12 +384,12 @@ export default function PostEditorWorkspace({
             )}
           </button>
 
-          {/* Toast Banner de Notificación */}
+          {/* Toast Notification */}
           {statusMessage && (
             <div
               onClick={() => setStatusMessage(null)}
-              className={`absolute right-14 bottom-0 whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold shadow-xl cursor-pointer ${
-                statusType === 'success' ? 'bg-[#10B981] text-white' : 'bg-[#FF4D4D] text-white'
+              className={`absolute right-14 bottom-0 whitespace-nowrap px-4 py-2 rounded-full text-xs font-extrabold shadow-2xl cursor-pointer transition-all ${
+                statusType === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
               }`}
             >
               {statusMessage}
@@ -395,6 +397,76 @@ export default function PostEditorWorkspace({
           )}
         </div>
       </div>
+
+      {/* MODAL INTERACTIVO DE CALENDARIO Y PROGRAMACIÓN */}
+      {isCalendarOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border border-white/50 space-y-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-sky-600">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-black text-gray-900">Programar Publicación</h3>
+              </div>
+              <button
+                onClick={() => setIsCalendarOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Fecha de Publicación
+                </label>
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Hora de Envío
+                </label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 text-[11px] text-sky-800 font-medium">
+                💡 El orquestador de n8n enviará automáticamente la publicación a las redes seleccionadas ({selectedPlatforms.join(', ')}) en la fecha y hora indicadas.
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsCalendarOpen(false)}
+                className="flex-1 py-3 px-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handlePublish(true)}
+                disabled={isPublishing}
+                className="flex-1 py-3 px-4 rounded-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-lg transition-all hover:scale-105"
+              >
+                {isPublishing ? 'Programando...' : 'Confirmar Fecha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
