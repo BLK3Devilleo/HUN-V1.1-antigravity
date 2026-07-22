@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
 
   // Solo interceptamos las rutas protegidas (dashboard y api)
@@ -97,7 +97,7 @@ export async function middleware(request: NextRequest) {
     .single();
 
   if (error || !profile) {
-    console.error('[Middleware Auth Error] Whitelist check failed:', error);
+    console.error('[Proxy Auth Error] Whitelist check failed:', error);
     await supabase.auth.signOut();
     return NextResponse.redirect(getSafeRedirectUrl('/login', 'access_denied'));
   }
@@ -113,6 +113,9 @@ export async function middleware(request: NextRequest) {
     },
   });
 }
+
+// Exportar también como middleware por compatibilidad
+export const middleware = proxy;
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
