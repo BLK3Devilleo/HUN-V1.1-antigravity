@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { getDashboardData, type DashboardOrg } from '@/app/actions/dashboard';
 
 export interface ConversationItem {
   id: string;
@@ -19,30 +20,30 @@ interface ConversationsSidebarProps {
   onSelectConversation?: (item: any) => void;
 }
 
-const PROJECTS = [
+const DEFAULT_MOCK_PROJECTS: DashboardOrg[] = [
   {
     id: 'org-1',
-    name: 'Organización número 1',
+    name: '[MOCK] Organización número 1',
     posts: [
-      { id: '1', title: 'Salvemos los árboles', active: true },
-      { id: '2', title: 'Esterilizacion de lomi...', active: false },
-      { id: '3', title: 'Técnicas de cuidado...', active: false },
-      { id: '4', title: 'Cultivos en casa fáci...', active: false },
+      { id: '1', title: '[MOCK] Salvemos los árboles', active: true },
+      { id: '2', title: '[MOCK] Esterilizacion de lomi...', active: false },
+      { id: '3', title: '[MOCK] Técnicas de cuidado...', active: false },
+      { id: '4', title: '[MOCK] Cultivos en casa fáci...', active: false },
     ],
   },
   {
     id: 'org-2',
-    name: 'Organización número 2',
+    name: '[MOCK] Organización número 2',
     posts: [
-      { id: '5', title: 'Anuncio de Producto B', active: true },
-      { id: '6', title: 'Campaña de Verano', active: false },
+      { id: '5', title: '[MOCK] Anuncio de Producto B', active: true },
+      { id: '6', title: '[MOCK] Campaña de Verano', active: false },
     ],
   },
   {
     id: 'org-3',
-    name: 'Organización número 3',
+    name: '[MOCK] Organización número 3',
     posts: [
-      { id: '7', title: 'Boletín Mensual', active: true },
+      { id: '7', title: '[MOCK] Boletín Mensual', active: true },
     ],
   },
 ];
@@ -54,11 +55,25 @@ export default function ConversationsSidebar({
   onSelectPost,
   onSelectConversation,
 }: ConversationsSidebarProps) {
+  const [projects, setProjects] = useState<DashboardOrg[]>(DEFAULT_MOCK_PROJECTS);
   const [currentOrgId, setCurrentOrgId] = useState(selectedOrg);
   const [activePostId, setActivePostId] = useState('1');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const activeProject = PROJECTS.find((p) => p.id === currentOrgId) || PROJECTS[0];
+  useEffect(() => {
+    async function loadData() {
+      const data = await getDashboardData();
+      if (data.organizations && data.organizations.length > 0) {
+        setProjects(data.organizations);
+        if (data.activeOrgId) {
+          setCurrentOrgId(data.activeOrgId);
+        }
+      }
+    }
+    loadData();
+  }, []);
+
+  const activeProject = projects.find((p) => p.id === currentOrgId) || projects[0] || DEFAULT_MOCK_PROJECTS[0];
 
   const handleOrgChange = (id: string) => {
     setCurrentOrgId(id);
@@ -158,7 +173,7 @@ export default function ConversationsSidebar({
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
               className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 p-2 z-50 flex flex-col gap-1"
             >
-              {PROJECTS.map((proj) => (
+              {projects.map((proj) => (
                 <button
                   key={proj.id}
                   onClick={() => handleOrgChange(proj.id)}

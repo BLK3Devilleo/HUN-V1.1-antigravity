@@ -23,16 +23,46 @@ export default function DashboardPage() {
   const [selectedFiles, setSelectedFiles] = useState<SelectedMedia[]>([]);
   const [isEditorActive, setIsEditorActive] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState('org-1');
-  const [activePostTitle, setActivePostTitle] = useState('Salvemos los árboles');
+  const [activePostTitle, setActivePostTitle] = useState('[MOCK] Salvemos los árboles');
   const [activeModal, setActiveModal] = useState<'org' | 'profile' | 'storage' | 'reach' | 'planner' | 'comments' | null>(null);
+
+  const [orgNames, setOrgNames] = useState<Record<string, string>>({
+    'org-1': '[MOCK] Organización número 1',
+    'org-2': '[MOCK] Organización número 2',
+    'org-3': '[MOCK] Organización número 3',
+  });
+  const [metrics, setMetrics] = useState({
+    usedGB: 3500,
+    totalGB: 3688,
+    reachCount: 252000,
+    plannerCount: 8,
+    commentsCount: 100,
+  });
 
   const supabase = createBrowserClient();
 
-  const orgNames: Record<string, string> = {
-    'org-1': 'Organización número 1',
-    'org-2': 'Organización número 2',
-    'org-3': 'Organización número 3',
-  };
+  useEffect(() => {
+    async function loadData() {
+      const { getDashboardData } = await import('@/app/actions/dashboard');
+      const data = await getDashboardData();
+      if (data.organizations && data.organizations.length > 0) {
+        const map: Record<string, string> = {};
+        data.organizations.forEach((o) => {
+          map[o.id] = o.name;
+        });
+        setOrgNames(map);
+        setSelectedOrg(data.activeOrgId || data.organizations[0].id);
+      }
+      setMetrics({
+        usedGB: data.storage.usedGB,
+        totalGB: data.storage.totalGB,
+        reachCount: data.reachCount,
+        plannerCount: data.plannerCount,
+        commentsCount: data.commentsCount,
+      });
+    }
+    loadData();
+  }, []);
 
   // Selector de multimedia
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,7 +350,7 @@ export default function DashboardPage() {
             >
               <div style={{ width: '18vw', height: '100%' }}>
                 <FolderCard title="Almacenamiento" onClick={() => setActiveModal('storage')}>
-                  <StorageBar usedGB={3500} totalGB={3688} />
+                  <StorageBar usedGB={metrics.usedGB} totalGB={metrics.totalGB} />
                 </FolderCard>
               </div>
 
@@ -328,7 +358,7 @@ export default function DashboardPage() {
                 <FolderCard title="Alcance total (mes)" onClick={() => setActiveModal('reach')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
-                      252K
+                      {metrics.reachCount >= 1000 ? `${Math.round(metrics.reachCount / 1000)}K` : metrics.reachCount}
                     </p>
                   </div>
                 </FolderCard>
@@ -338,7 +368,7 @@ export default function DashboardPage() {
                 <FolderCard title="Planificador" onClick={() => setActiveModal('planner')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
-                      8 hoy
+                      {metrics.plannerCount} hoy
                     </p>
                   </div>
                 </FolderCard>
@@ -348,9 +378,9 @@ export default function DashboardPage() {
                 <FolderCard title="Comentarios" onClick={() => setActiveModal('comments')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
-                      100
+                      {metrics.commentsCount}
                     </p>
-                    <p className="text-xs font-semibold text-[#666666] mt-1">
+                    <p className="text-xs font-semibold text-[var(--nuh-text-secondary)] mt-1">
                       Nuevos
                     </p>
                   </div>

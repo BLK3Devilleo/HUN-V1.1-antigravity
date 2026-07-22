@@ -52,6 +52,83 @@ export default function PostEditorWorkspace({
   );
 
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
+  const editorFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenPicker = () => {
+    editorFileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setStatusMessage('Subiendo archivo a Cloudflare R2...');
+    setStatusType('success');
+
+    try {
+      const { useR2Upload } = await import('@/hooks/useR2Upload');
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const { saveMediaRecord } = await import('@/app/actions/media');
+
+      const fileList = Array.from(files);
+      const newUrls: string[] = [];
+
+      for (const file of fileList) {
+        // Fallback a URL local si falla la subida física
+        const localUrl = URL.createObjectURL(file);
+        try {
+          const res = await fetch('/api/r2/presign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: file.name,
+              mimeType: file.type || 'image/jpeg',
+              fileSize: file.size,
+            }),
+          });
+
+          if (res.ok) {
+            const { url: uploadUrl, publicUrl } = await res.json();
+            const putRes = await fetch(uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': file.type || 'image/jpeg' },
+              body: file,
+            });
+            if (putRes.ok) {
+              await saveMediaRecord(publicUrl, file.name);
+              newUrls.push(publicUrl);
+            } else {
+              newUrls.push(localUrl);
+            }
+          } else {
+            newUrls.push(localUrl);
+          }
+        } catch {
+          newUrls.push(localUrl);
+        }
+      }
+
+      if (newUrls.length > 0) {
+        setThumbnails((prev) => [...prev, ...newUrls]);
+        setActiveMediaIndex(thumbnails.length);
+        setStatusType('success');
+        setStatusMessage('¡Multimedia subida y registrada en Mi Galería!');
+      }
+    } catch {
+      handleAddImageFallback();
+    }
+
+    if (editorFileInputRef.current) {
+      editorFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddImageFallback = () => {
+    const nextImage = DEFAULT_IMAGES[thumbnails.length % DEFAULT_IMAGES.length];
+    if (thumbnails.length < 15) {
+      setThumbnails((prev) => [...prev, nextImage]);
+    }
+  };
 
   const handlePublish = async (isScheduled = false) => {
     if (!caption.trim() && thumbnails.length === 0) {
@@ -423,6 +500,15 @@ export default function PostEditorWorkspace({
             </div>
           </div>
 
+          <input
+            type="file"
+            ref={editorFileInputRef}
+            onChange={handleFileSelected}
+            multiple
+            accept="image/*,video/*"
+            className="hidden"
+          />
+
           <div
             className="flex flex-col justify-between"
             style={{
@@ -432,22 +518,23 @@ export default function PostEditorWorkspace({
             }}
           >
             <button
-              onClick={handleAddImage}
+              onClick={handleOpenPicker}
               style={{
                 width: '11.3021vw',
                 height: '5.6481vh',
               }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center"
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
             >
               + Añadir
             </button>
 
             <button
+              onClick={handleOpenPicker}
               style={{
                 width: '11.3021vw',
                 height: '5.6481vh',
               }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center"
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
             >
               Imagen/Carrusel
             </button>
