@@ -51,10 +51,16 @@ export default function DashboardPage() {
     setIsEditorActive(true);
   };
 
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  const handleCancelSelection = () => {
+    setSelectedFiles([]);
   };
 
+  // Iniciar transición al Editor
+  const handleConfirm = () => {
+    setIsEditorActive(true);
+  };
+
+  // Volver al Dashboard (Guardar sesión y revertir animación)
   const handleBackToDashboard = () => {
     setIsEditorActive(false);
   };
@@ -259,6 +265,73 @@ export default function DashboardPage() {
                 + Crear
               </button>
             </div>
+            {/* PREVISUALIZACIÓN MULTIMEDIA Y ACCIONES (CONFIRMAR, CANCELAR, AÑADIR MÁS) EN EL DASHBOARD */}
+            <AnimatePresence>
+              {selectedFiles.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="pointer-events-auto mt-4 p-3 px-4 rounded-2xl bg-white/95 backdrop-blur-md border border-black/10 shadow-xl flex items-center justify-between gap-4"
+                  style={{ maxWidth: '50vw' }}
+                >
+                  <div className="flex items-center gap-2.5 overflow-x-auto max-w-[26vw] py-1 scrollbar-none">
+                    {selectedFiles.map((media, idx) => (
+                      <div
+                        key={idx}
+                        className="relative group flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-black/10 bg-black/5 shadow-sm"
+                      >
+                        {media.isVideo ? (
+                          <video src={media.url} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={media.url} alt={`preview-${idx}`} className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveFile(idx);
+                          }}
+                          className="absolute top-0.5 right-0.5 bg-black/70 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Eliminar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Acciones: + Añadir más, Cancelar, Confirmar */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={handleCrearClick}
+                      className="px-3.5 py-2 rounded-full text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-black border border-black/10 transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                      title="Añadir más archivos multimedia"
+                    >
+                      <span className="text-sm font-extrabold">+</span>
+                      <span>Añadir</span>
+                    </button>
+
+                    <button
+                      onClick={handleCancelSelection}
+                      className="px-3.5 py-2 rounded-full text-xs font-bold bg-neutral-200 hover:bg-neutral-300 text-neutral-800 transition-all active:scale-95 cursor-pointer"
+                      title="Cancelar selección"
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      onClick={handleConfirm}
+                      className="px-5 py-2 rounded-full text-xs font-black uppercase tracking-wider bg-black text-white hover:bg-neutral-800 transition-all active:scale-95 flex items-center gap-1.5 shadow-md cursor-pointer"
+                    >
+                      <span>Confirmar</span>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

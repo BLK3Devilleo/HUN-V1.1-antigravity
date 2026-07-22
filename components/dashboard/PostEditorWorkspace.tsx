@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SelectedMedia {
   file?: File;
@@ -8,10 +9,18 @@ interface SelectedMedia {
   isVideo?: boolean;
 }
 
+export interface ContentVariationBlock {
+  id: string;
+  number: number;
+  caption: string;
+  selectedPlatforms: string[];
+  thumbnails: string[];
+  activeMediaIndex: number;
+}
+
 interface PostEditorWorkspaceProps {
   initialMedia: SelectedMedia[];
   currentPostTitle?: string;
-  activeOrgId?: string;
 }
 
 const DEFAULT_IMAGES = [
@@ -30,41 +39,125 @@ const SOCIAL_PLATFORMS = [
 export default function PostEditorWorkspace({
   initialMedia,
   currentPostTitle = 'Salvemos los árboles',
-  activeOrgId = 'org-1',
 }: PostEditorWorkspaceProps) {
-  const [caption, setCaption] = useState('');
-  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook']);
-  const [thumbnails, setThumbnails] = useState<string[]>(
-    initialMedia.length > 0
-      ? initialMedia.map((m) => m.url)
-      : DEFAULT_IMAGES
-  );
+  // Estado de Bloques de Variaciones de Contenido (Guardados por sesión/conversación)
+  const [variationBlocks, setVariationBlocks] = useState<ContentVariationBlock[]>([
+    {
+      id: 'variation-1',
+      number: 1,
+      caption: '',
+      selectedPlatforms: ['facebook', 'instagram'],
+      thumbnails: initialMedia.length > 0 ? initialMedia.map((m) => m.url) : DEFAULT_IMAGES,
+      activeMediaIndex: 0,
+    },
+  ]);
+  const [activeBlockId, setActiveBlockId] = useState<string>('variation-1');
+  const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
 
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
+  const workspaceFileInputRef = useRef<HTMLInputElement>(null);
+  const dropdownScrollRef = useRef<HTMLDivElement>(null);
 
-  const activeMediaUrl = thumbnails[activeMediaIndex] || DEFAULT_IMAGES[0];
-  const isVideo = initialMedia[activeMediaIndex]?.isVideo || false;
+  // Obtener el bloque activo actual
+  const activeBlock = variationBlocks.find((b) => b.id === activeBlockId) || variationBlocks[0];
+  const activeMediaUrl = activeBlock.thumbnails[activeBlock.activeMediaIndex] || DEFAULT_IMAGES[0];
+  const isVideo = activeMediaUrl.endsWith('.mp4') || activeMediaUrl.includes('video');
 
-  // Toggle de selección múltiple de redes sociales
-  const togglePlatform = (id: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+  // Actualizar descripción del bloque activo
+  const handleCaptionChange = (text: string) => {
+    setVariationBlocks((prev) =>
+      prev.map((b) => (b.id === activeBlock.id ? { ...b, caption: text } : b))
     );
   };
 
-  // Manejar adición de nueva imagen
-  const handleAddImage = () => {
-    const nextImage =
-      DEFAULT_IMAGES[thumbnails.length % DEFAULT_IMAGES.length];
-    if (thumbnails.length < 15) {
-      setThumbnails((prev) => [...prev, nextImage]);
+  // Toggle de redes sociales en el bloque activo
+  const togglePlatform = (id: string) => {
+    setVariationBlocks((prev) =>
+      prev.map((b) => {
+        if (b.id !== activeBlock.id) return b;
+        const exists = b.selectedPlatforms.includes(id);
+        const updated = exists
+          ? b.selectedPlatforms.filter((p) => p !== id)
+          : [...b.selectedPlatforms, id];
+        return { ...b, selectedPlatforms: updated };
+      })
+    );
+  };
+
+  // Selector de multimedia local en el workspace para el bloque activo
+  const handleWorkspaceFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newUrls = Array.from(e.target.files).map((file) => URL.createObjectURL(file));
+      setVariationBlocks((prev) =>
+        prev.map((b) => {
+          if (b.id !== activeBlock.id) return b;
+          return {
+            ...b,
+            thumbnails: [...b.thumbnails, ...newUrls],
+            activeMediaIndex: b.thumbnails.length,
+          };
+        })
+      );
     }
   };
 
-  // Navegación fluida de miniaturas
+  // Eliminar multimedia individual del bloque activo
+  const handleRemoveMediaFromActiveBlock = (indexToRemove: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVariationBlocks((prev) =>
+      prev.map((b) => {
+        if (b.id !== activeBlock.id) return b;
+        const updatedThumbnails = b.thumbnails.filter((_, i) => i !== indexToRemove);
+        const newIndex = Math.min(b.activeMediaIndex, Math.max(0, updatedThumbnails.length - 1));
+        return {
+          ...b,
+          thumbnails: updatedThumbnails.length > 0 ? updatedThumbnails : [DEFAULT_IMAGES[0]],
+          activeMediaIndex: newIndex,
+        };
+      })
+    );
+  };
+
+  // Crear un nuevo Bloque de Variación de Contenido (+)
+  const handleAddVariationBlock = () => {
+    const nextNumber = variationBlocks.length + 1;
+    const newBlock: ContentVariationBlock = {
+      id: `variation-${Date.now()}`,
+      number: nextNumber,
+      caption: '',
+      selectedPlatforms: ['facebook'],
+      thumbnails: [...activeBlock.thumbnails],
+      activeMediaIndex: 0,
+    };
+    setVariationBlocks((prev) => [...prev, newBlock]);
+    setActiveBlockId(newBlock.id);
+  };
+
+  // Eliminar un Bloque de Variación
+  const handleDeleteVariationBlock = (blockId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (variationBlocks.length <= 1) return;
+    const filtered = variationBlocks.filter((b) => b.id !== blockId);
+    const renumbered = filtered.map((b, idx) => ({ ...b, number: idx + 1 }));
+    setVariationBlocks(renumbered);
+    if (activeBlockId === blockId) {
+      setActiveBlockId(renumbered[0].id);
+    }
+  };
+
+  const handleAddImage = () => {
+    workspaceFileInputRef.current?.click();
+  };
+
+  // Navegación fluida de miniaturas en el bloque activo
   const handlePrevThumb = () => {
-    setActiveMediaIndex((prev) => Math.max(0, prev - 1));
+    setVariationBlocks((prev) =>
+      prev.map((b) =>
+        b.id === activeBlock.id
+          ? { ...b, activeMediaIndex: Math.max(0, b.activeMediaIndex - 1) }
+          : b
+      )
+    );
     if (thumbnailScrollRef.current) {
       const step = thumbnailScrollRef.current.clientWidth * (118 / 838);
       thumbnailScrollRef.current.scrollBy({ left: -step, behavior: 'smooth' });
@@ -72,8 +165,18 @@ export default function PostEditorWorkspace({
   };
 
   const handleNextThumb = () => {
-    setActiveMediaIndex((prev) =>
-      Math.min(thumbnails.length - 1, prev + 1)
+    setVariationBlocks((prev) =>
+      prev.map((b) =>
+        b.id === activeBlock.id
+          ? {
+              ...b,
+              activeMediaIndex: Math.min(
+                b.thumbnails.length - 1,
+                b.activeMediaIndex + 1
+              ),
+            }
+          : b
+      )
     );
     if (thumbnailScrollRef.current) {
       const step = thumbnailScrollRef.current.clientWidth * (118 / 838);
@@ -81,12 +184,19 @@ export default function PostEditorWorkspace({
     }
   };
 
-  // Calcular rangos contiguos de selección para renderizar la pastilla unificada
+  // Cambiar miniatura activa en el bloque actual
+  const handleSelectThumbnail = (index: number) => {
+    setVariationBlocks((prev) =>
+      prev.map((b) => (b.id === activeBlock.id ? { ...b, activeMediaIndex: index } : b))
+    );
+  };
+
+  // Calcular rangos contiguos de selección para la barra lateral del bloque activo
   const selectionRanges: { start: number; end: number }[] = [];
   let rangeStart: number | null = null;
 
   SOCIAL_PLATFORMS.forEach((plat, idx) => {
-    const isSelected = selectedPlatforms.includes(plat.id);
+    const isSelected = activeBlock.selectedPlatforms.includes(plat.id);
     if (isSelected) {
       if (rangeStart === null) rangeStart = idx;
     } else {
@@ -102,16 +212,31 @@ export default function PostEditorWorkspace({
 
   return (
     <div className="flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative">
-      {/* TÍTULO SUPERIOR CENTRADO */}
-      <h2 className="text-sm font-extrabold text-black tracking-tight mb-1 text-center bg-white/70 px-4 py-1 rounded-full shadow-sm">
-        {currentPostTitle}
-      </h2>
+      {/* Input oculto de archivos para el botón + Añadir */}
+      <input
+        type="file"
+        ref={workspaceFileInputRef}
+        onChange={handleWorkspaceFileSelect}
+        multiple
+        accept="image/*,video/*"
+        className="hidden"
+      />
 
-      {/* CONTENEDOR DE PREVISUALIZACIÓN */}
+      {/* TÍTULO SUPERIOR CENTRADO CON INDICADOR DE BLOQUE ACTIVO */}
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-sm font-bold text-black tracking-tight text-center">
+          {currentPostTitle}
+        </h2>
+        <span className="text-[11px] font-black bg-black text-white px-2 py-0.5 rounded-full">
+          Variación {activeBlock.number}
+        </span>
+      </div>
+
+      {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) x 398px (36.8519vh) CENTRADO */}
       <div className="relative w-full flex items-center justify-center">
         {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO (IMAGEN + DOTS + DESCRIPCIÓN) - 1091px x 398px */}
         <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3.5 items-center justify-between w-[56.8229vw] h-[36.8519vh]">
-          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN (SIEMPRE CUADRADO, CALCULADO DEL ANCHO DEL CONTENEDOR GENERAL) Y PUNTOS DE PAGINACIÓN */}
+          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN Y PUNTOS DE PAGINACIÓN */}
           <div
             className="flex flex-col items-center justify-between h-full"
             style={{
@@ -119,9 +244,9 @@ export default function PostEditorWorkspace({
               marginLeft: '1.3749%',
             }}
           >
-            {/* CONTENEDOR DE LA IMAGEN (336px x 336px) - SIEMPRE CUADRADO BASADO EN EL ANCHO (30.7974%), 15px (3.7688%) MARGEN SUPERIOR */}
+            {/* CONTENEDOR DE LA IMAGEN (336px x 336px) - SIEMPRE CUADRADO */}
             <div
-              className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center"
+              className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group"
               style={{
                 marginTop: '3.7688%',
               }}
@@ -141,18 +266,20 @@ export default function PostEditorWorkspace({
               )}
             </div>
 
-            {/* PUNTOS DE PAGINACIÓN DE CARRUSEL (Centrados con la imagen, 15px = 3.7688% de margen al borde inferior) */}
+            {/* PUNTOS DE PAGINACIÓN DE CARRUSEL DE LA VARIACIÓN ACTIVA */}
             <div
               className="flex items-center justify-center gap-1.5 w-full"
-              style={{ marginBottom: '3.7688%' }}
+              style={{
+                marginBottom: '3.7688%',
+              }}
             >
-              {Array.from({ length: Math.max(7, thumbnails.length) }).map(
+              {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map(
                 (_, idx) => (
                   <span
                     key={idx}
                     className={`rounded-full transition-all ${
-                      idx === activeMediaIndex
-                        ? 'w-2.5 h-2.5 bg-black shadow-sm'
+                      idx === activeBlock.activeMediaIndex
+                        ? 'w-2 h-2 bg-[#555555]'
                         : 'w-1.5 h-1.5 bg-[#BBBBBB]'
                     }`}
                   />
@@ -161,27 +288,27 @@ export default function PostEditorWorkspace({
             </div>
           </div>
 
-          {/* COLUMNA DERECHA: TEXTO */}
+          {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO PARA LA VARIACIÓN ACTIVA */}
           <div
-            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center shadow-inner"
+            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center"
             style={{
               height: '91.4573%',
               marginRight: '1.3749%',
             }}
           >
-            {caption.trim() ? (
-              <p className="text-xs font-medium text-black leading-relaxed whitespace-pre-wrap">
-                {caption}
+            {activeBlock.caption.trim() ? (
+              <p className="text-xs font-normal text-black leading-relaxed whitespace-pre-wrap">
+                {activeBlock.caption}
               </p>
             ) : (
               <span className="text-xs italic text-[#999999] font-normal">
-                Escribe una descripción para previsualizar...
+                Descripción de contenido para Variación {activeBlock.number}
               </span>
             )}
           </div>
         </div>
 
-        {/* BARRA DERECHA DE REDES SOCIALES (Diámetro círculo: 86px = 4.4792vw, Píldora: 86px x 334px = 4.4792vw x 30.9259vh, Gap: 12px = 1.1111vh, 247px de top del viewport) */}
+        {/* BARRA DERECHA DE REDES SOCIALES + MENÚ DESPLEGABLE HORIZONTAL DE BLOQUES DE VARIACIÓN */}
         <div
           className="absolute left-[calc(50%+28.41145vw+1.2vw)] flex flex-col items-center justify-start"
           style={{
@@ -189,31 +316,143 @@ export default function PostEditorWorkspace({
             gap: '1.1111vh',
           }}
         >
-          {/* Círculo superior chevron down (Diámetro 86px = 4.4792vw) */}
-          <button
-            style={{
-              width: '4.4792vw',
-              height: '4.4792vw',
-            }}
-            className="bg-[#888888] hover:bg-[#777777] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 border border-black/10 flex-shrink-0"
-            title="Opciones de redes"
-          >
-            <svg
-              className="w-7 h-7"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {/* CONTENEDOR RELATIVO DEL BOTÓN CÍRCULO DESPLEGABLE */}
+          <div className="relative">
+            {/* Círculo superior chevron down - Mantenido por ENCIMA de la píldora (z-30) */}
+            <button
+              onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
+              style={{
+                width: '4.4792vw',
+                height: '4.4792vw',
+              }}
+              className="relative z-30 bg-[#888888] hover:bg-[#777777] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 border border-black/10 flex-shrink-0 cursor-pointer shadow-sm"
+              title="Seleccionar Variación de Contenido"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
+              <svg
+                className={`w-7 h-7 transition-transform ${isSocialDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
 
-          {/* Barra vertical de redes sociales (86px x 334px = 4.4792vw x 30.9259vh) */}
+            {/* PÍLDORA HORIZONTAL DESPLEGABLE DE BLOQUES NUMERADOS (1, 2, 3...) + BOTÓN + AÑADIR NUEVA VARIACIÓN */}
+            <AnimatePresence>
+              {isSocialDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, x: -10 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, x: -10 }}
+                  className="absolute left-0 top-0 z-10 flex items-center pointer-events-auto"
+                  style={{
+                    gap: '0.5208vw', // 10px entre la píldora de 277px y el círculo + a su derecha
+                  }}
+                >
+                  {/* Píldora horizontal de 277px x 86px fijada a la izquierda (Alto 4.4792vw igual al círculo activador) */}
+                  <div
+                    style={{
+                      width: '14.4271vw',
+                      height: '4.4792vw',
+                    }}
+                    className="bg-[#D9D9D9]/95 backdrop-blur-md border border-black/10 rounded-full flex items-center relative overflow-hidden shadow-xl"
+                  >
+                    {/* Contenedor scrolleable con padding inicial de 94px (33.9350% de 277px) y CÍRCULOS NUMERADOS (1, 2, 3...) */}
+                    <div
+                      ref={dropdownScrollRef}
+                      className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth"
+                      style={{
+                        paddingLeft: '33.9350%',
+                        paddingRight: '4%',
+                        gap: '2.8881%',
+                      }}
+                    >
+                      {variationBlocks.map((block) => {
+                        const isCurrentActive = block.id === activeBlock.id;
+                        return (
+                          <div
+                            key={block.id}
+                            onClick={() => setActiveBlockId(block.id)}
+                            style={{
+                              width: '35%',
+                              aspectRatio: '1 / 1',
+                            }}
+                            className={`relative group rounded-full flex items-center justify-center font-black text-base transition-all flex-shrink-0 cursor-pointer ${
+                              isCurrentActive
+                                ? 'bg-black text-white scale-105 shadow-md border-2 border-black'
+                                : 'bg-white text-black border border-black/20 hover:border-black'
+                            }`}
+                            title={`Variación de Contenido #${block.number}`}
+                          >
+                            <span>{block.number}</span>
+                            {variationBlocks.length > 1 && (
+                              <button
+                                onClick={(e) => handleDeleteVariationBlock(block.id, e)}
+                                className="absolute -top-1 -right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                                title="Eliminar variación"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Flechas de navegación DEBAJO de la píldora si hay más de 2 variaciones */}
+                  {variationBlocks.length > 2 && (
+                    <div className="absolute top-[calc(100%+6px)] left-0 w-[14.4271vw] flex items-center justify-center gap-5 text-[#666666] z-20 pointer-events-auto">
+                      <button
+                        onClick={() => {
+                          if (dropdownScrollRef.current) {
+                            dropdownScrollRef.current.scrollBy({ left: -76, behavior: 'smooth' });
+                          }
+                        }}
+                        className="hover:text-black font-extrabold text-xs transition-transform active:scale-95 cursor-pointer"
+                      >
+                        ◄
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (dropdownScrollRef.current) {
+                            dropdownScrollRef.current.scrollBy({ left: 76, behavior: 'smooth' });
+                          }
+                        }}
+                        className="hover:text-black font-extrabold text-xs transition-transform active:scale-95 cursor-pointer"
+                      >
+                        ►
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Círculo + Añadir nueva Variación de Contenido */}
+                  <button
+                    onClick={handleAddVariationBlock}
+                    style={{
+                      width: '6.2963vh',
+                      height: '6.2963vh',
+                      aspectRatio: '1 / 1',
+                    }}
+                    className="bg-[#888888] hover:bg-[#777777] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 border border-black/10 flex-shrink-0 shadow-md cursor-pointer"
+                    title="Añadir nueva Variación de Contenido"
+                  >
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Barra vertical de redes sociales asignadas al bloque activo */}
           <div
             style={{
               width: '4.4792vw',
@@ -221,15 +460,14 @@ export default function PostEditorWorkspace({
             }}
             className="bg-[#D9D9D9] rounded-full border border-black/10 relative overflow-hidden"
           >
-            {/* FONDO NEGRO UNIFICADO PARA RANGOS DE SELECCIÓN CONTIGUOS (GEOMETRÍA EXACTA: 10px MARGEN SUPERIOR/INFERIOR, PASO 62.25px) */}
+            {/* FONDO NEGRO UNIFICADO PARA RANGOS DE SELECCIÓN DE LA VARIACIÓN ACTIVA */}
             {selectionRanges.map((range) => {
               const isSingle = range.start === range.end;
-              // Centros exactos en px (Facebook: 42.5px, TikTok: 291.5px, Paso: 62.25px)
               const yStartCenterPx = 42.5 + range.start * 62.25;
               const yEndCenterPx = 42.5 + range.end * 62.25;
               
-              const yTopPx = yStartCenterPx - 32.5; // Top del círculo superior
-              const yBottomPx = yEndCenterPx + 32.5; // Bottom del círculo inferior
+              const yTopPx = yStartCenterPx - 32.5;
+              const yBottomPx = yEndCenterPx + 32.5;
               const heightPx = yBottomPx - yTopPx;
 
               const topPercent = (yTopPx / 334) * 100;
@@ -276,9 +514,9 @@ export default function PostEditorWorkspace({
               }
             })}
 
-            {/* ÍCONOS DE REDES SOCIALES POSICIONADOS EN LOS CENTROS CONCÉNTRICOS EXACTOS */}
+            {/* ÍCONOS DE REDES SOCIALES PARA LA VARIACIÓN ACTIVA */}
             {SOCIAL_PLATFORMS.map((plat, idx) => {
-              const isSel = selectedPlatforms.includes(plat.id);
+              const isSel = activeBlock.selectedPlatforms.includes(plat.id);
               const yCenterPx = 42.5 + idx * 62.25;
               const topPercent = (yCenterPx / 334) * 100;
 
@@ -293,7 +531,6 @@ export default function PostEditorWorkspace({
                   className="absolute inset-x-0 flex items-center justify-center cursor-pointer z-10"
                   title={plat.name}
                 >
-                  {/* Ícono de red social (Centrado concentrico exacto sobre el centro de cada círculo) */}
                   <div
                     className={`flex items-center justify-center transition-colors ${
                       isSel ? 'text-white font-bold' : 'text-[#666666] hover:text-[#333333] font-semibold'
@@ -326,15 +563,14 @@ export default function PostEditorWorkspace({
         </div>
       </div>
 
-      {/* BARRA DE MINIATURAS */}
+      {/* BARRA INTERMEDIA DE CONTROL Y MINIATURAS DEL BLOQUE ACTIVO */}
       <div
         className="flex flex-col items-center gap-1 w-[56.8229vw]"
         style={{ marginTop: '.2vh' }}
       >
         <div className="w-full flex items-stretch justify-between">
-          {/* Contenedor general de miniaturas (838px x 129px = 43.6458vw x 11.9444vh) */}
+          {/* Contenedor general de miniaturas (838px x 129px) */}
           <div className="w-[43.6458vw] h-[11.9444vh] bg-[#E5E5E5]/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[22px] overflow-hidden flex items-center">
-            {/* Slider de miniaturas con padding de 10px (1.1933% lat, 7.7519% vert) y gap de 9px (1.0740%) */}
             <div
               ref={thumbnailScrollRef}
               className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth"
@@ -346,19 +582,19 @@ export default function PostEditorWorkspace({
                 gap: '1.0740%',
               }}
             >
-              {Array.from({ length: Math.max(7, thumbnails.length) }).map((_, idx) => {
-                const thumbUrl = thumbnails[idx];
-                const isActive = idx === activeMediaIndex;
+              {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map((_, idx) => {
+                const thumbUrl = activeBlock.thumbnails[idx];
+                const isActive = idx === activeBlock.activeMediaIndex;
 
                 return (
                   <div
                     key={idx}
-                    onClick={() => thumbUrl && setActiveMediaIndex(idx)}
+                    onClick={() => thumbUrl && handleSelectThumbnail(idx)}
                     style={{
-                      width: '13.0072%', // 109px of 838px
+                      width: '13.0072%',
                       aspectRatio: '1 / 1',
                     }}
-                    className={`rounded-2xl overflow-hidden cursor-pointer transition-all flex-shrink-0 flex items-center justify-center ${
+                    className={`relative group rounded-2xl overflow-hidden cursor-pointer transition-all flex-shrink-0 flex items-center justify-center ${
                       thumbUrl
                         ? isActive
                           ? 'border-2 border-black scale-105'
@@ -367,11 +603,22 @@ export default function PostEditorWorkspace({
                     }`}
                   >
                     {thumbUrl ? (
-                      <img
-                        src={thumbUrl}
-                        alt={`thumb-${idx}`}
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <img
+                          src={thumbUrl}
+                          alt={`thumb-${idx}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {activeBlock.thumbnails.length > 1 && (
+                          <button
+                            onClick={(e) => handleRemoveMediaFromActiveBlock(idx, e)}
+                            className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                            title="Eliminar esta imagen del bloque"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </>
                     ) : null}
                   </div>
                 );
@@ -379,6 +626,7 @@ export default function PostEditorWorkspace({
             </div>
           </div>
 
+          {/* Pila vertical de 2 botones de 217px x 61px con gap de 6px */}
           <div
             className="flex flex-col justify-between"
             style={{
@@ -393,7 +641,7 @@ export default function PostEditorWorkspace({
                 width: '11.3021vw',
                 height: '5.6481vh',
               }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center"
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
             >
               + Añadir
             </button>
@@ -403,47 +651,47 @@ export default function PostEditorWorkspace({
                 width: '11.3021vw',
                 height: '5.6481vh',
               }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center"
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
             >
               Imagen/Carrusel
             </button>
           </div>
         </div>
 
-        {/* Flechas de navegación */}
+        {/* Flechas de navegación centradas debajo del contenedor de miniaturas */}
         <div className="w-[43.6458vw] flex items-center justify-center gap-6 text-[#666666] self-start mt-1">
           <button
             onClick={handlePrevThumb}
-            className="hover:text-black font-extrabold text-sm transition-transform active:scale-95"
+            className="hover:text-black font-extrabold text-sm transition-transform active:scale-95 cursor-pointer"
           >
             ◄
           </button>
           <button
             onClick={handleNextThumb}
-            className="hover:text-black font-extrabold text-sm transition-transform active:scale-95"
+            className="hover:text-black font-extrabold text-sm transition-transform active:scale-95 cursor-pointer"
           >
             ►
           </button>
         </div>
       </div>
 
-      {/* CAJA DE TEXTO INFERIOR */}
+      {/* CAJA DE TEXTO INFERIOR DE LA VARIACIÓN ACTIVA CON BOTONES DE ACCIÓN */}
       <div className="flex items-center gap-3 w-[56.8229vw] mt-2">
         <div className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 min-h-[10vh]">
           <textarea
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Escribe la descripción de la publicación..."
+            value={activeBlock.caption}
+            onChange={(e) => handleCaptionChange(e.target.value)}
+            placeholder={`Escribe la descripción de la Variación ${activeBlock.number}...`}
             rows={2}
             className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
           />
         </div>
 
-        {/* BOTONES DE ACCIÓN (CALENDARIO PROGRAMACIÓN + CONFIRMAR Y PUBLICAR) */}
-        <div className="flex flex-col gap-2 relative">
+        {/* Pila vertical de botones redondos */}
+        <div className="flex flex-col gap-2">
           <button
-            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center transition-transform active:scale-95"
-            title="Programar publicación"
+            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+            title="Programar publicación de esta variación"
           >
             <svg
               className="w-5 h-5"
@@ -461,111 +709,25 @@ export default function PostEditorWorkspace({
           </button>
 
           <button
-            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center transition-transform active:scale-95"
-            title="Confirmar y publicar"
+            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+            title="Confirmar y publicar esta variación"
           >
-            {isPublishing ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={3}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            )}
-          </button>
-
-          {/* Toast Notification */}
-          {statusMessage && (
-            <div
-              onClick={() => setStatusMessage(null)}
-              className={`absolute right-14 bottom-0 whitespace-nowrap px-4 py-2 rounded-full text-xs font-extrabold shadow-2xl cursor-pointer transition-all ${
-                statusType === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-              }`}
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              {statusMessage}
-            </div>
-          )}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </button>
         </div>
       </div>
-
-      {/* MODAL INTERACTIVO DE CALENDARIO Y PROGRAMACIÓN */}
-      {isCalendarOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border border-white/50 space-y-6 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-sky-600">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-base font-black text-gray-900">Programar Publicación</h3>
-              </div>
-              <button
-                onClick={() => setIsCalendarOpen(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-                  Fecha de Publicación
-                </label>
-                <input
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-                  Hora de Envío
-                </label>
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-
-              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 text-[11px] text-sky-800 font-medium">
-                💡 El orquestador de n8n enviará automáticamente la publicación a las redes seleccionadas ({selectedPlatforms.join(', ')}) en la fecha y hora indicadas.
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setIsCalendarOpen(false)}
-                className="flex-1 py-3 px-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handlePublish(true)}
-                disabled={isPublishing}
-                className="flex-1 py-3 px-4 rounded-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-lg transition-all hover:scale-105"
-              >
-                {isPublishing ? 'Programando...' : 'Confirmar Fecha'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
