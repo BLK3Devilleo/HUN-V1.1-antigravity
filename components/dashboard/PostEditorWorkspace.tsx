@@ -35,6 +35,16 @@ export default function PostEditorWorkspace({
   const [caption, setCaption] = useState('');
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook']);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusType, setStatusType] = useState<'success' | 'error' | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  });
+  const [scheduledTime, setScheduledTime] = useState('14:00');
   const [thumbnails, setThumbnails] = useState<string[]>(
     initialMedia.length > 0
       ? initialMedia.map((m) => m.url)
@@ -42,6 +52,40 @@ export default function PostEditorWorkspace({
   );
 
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
+
+  const handlePublish = async (isScheduled = false) => {
+    if (!caption.trim() && thumbnails.length === 0) {
+      setStatusType('error');
+      setStatusMessage('Ingresa una descripción o selecciona multimedia.');
+      return;
+    }
+
+    setIsPublishing(true);
+    setStatusMessage(null);
+
+    const { publishPostAction } = await import('@/app/actions/post');
+    const result = await publishPostAction({
+      title: currentPostTitle,
+      caption: caption || 'Publicación desde NUH Workspace',
+      mediaUrls: thumbnails,
+      platforms: selectedPlatforms,
+      orgId: activeOrgId,
+    });
+
+    setIsPublishing(false);
+
+    if (result.success) {
+      setStatusType('success');
+      setStatusMessage(
+        isScheduled
+          ? '🗓️ ¡Programado con éxito!'
+          : '✔️ ¡Publicación enviada a n8n y redes!'
+      );
+    } else {
+      setStatusType('error');
+      setStatusMessage(result.error || 'Error al publicar.');
+    }
+  };
 
   const activeMediaUrl = thumbnails[activeMediaIndex] || DEFAULT_IMAGES[0];
   const isVideo = initialMedia[activeMediaIndex]?.isVideo || false;
@@ -442,7 +486,8 @@ export default function PostEditorWorkspace({
         {/* BOTONES DE ACCIÓN (CALENDARIO PROGRAMACIÓN + CONFIRMAR Y PUBLICAR) */}
         <div className="flex flex-col gap-2 relative">
           <button
-            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center transition-transform active:scale-95"
+            onClick={() => setIsCalendarOpen(true)}
+            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
             title="Programar publicación"
           >
             <svg
@@ -461,7 +506,9 @@ export default function PostEditorWorkspace({
           </button>
 
           <button
-            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center transition-transform active:scale-95"
+            onClick={() => handlePublish(false)}
+            disabled={isPublishing}
+            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
             title="Confirmar y publicar"
           >
             {isPublishing ? (
