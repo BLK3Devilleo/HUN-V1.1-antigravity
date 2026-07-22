@@ -78,7 +78,7 @@ export default function DashboardPage() {
           ========================================================= */}
       <div
         className="absolute flex items-center z-40"
-        style={{ top: '4.1vh', left: '2.3vw', gap: '0.6vw' }}
+        style={{ top: '4.0741vh', left: '2.2917vw', gap: '0.6vw' }}
       >
         <div
           className="rounded-full text-sm font-semibold text-black flex items-center justify-center select-none shadow-sm"
@@ -104,12 +104,12 @@ export default function DashboardPage() {
 
       {/* =========================================================
           TÍTULO NUH: En modo Editor se encoge y se coloca arriba a la derecha
-          Padding al límite superior (4.1vh) y derecho (2.3vw)
+          Padding al límite superior (44px = 4.0741vh) y derecho (44px = 2.2917vw)
           ========================================================= */}
       <motion.div
         animate={{
-          top: isEditorActive ? '4.1vh' : '8vh',
-          right: isEditorActive ? '2.3vw' : '0vw',
+          top: isEditorActive ? '4.0741vh' : '8vh',
+          right: isEditorActive ? '2.2917vw' : '0vw',
           left: isEditorActive ? 'auto' : '0vw',
           width: isEditorActive ? 'auto' : '100%',
           scale: isEditorActive ? 0.22 : 1,
@@ -143,7 +143,7 @@ export default function DashboardPage() {
         className="absolute z-30"
         style={{
           top: '14.9vh',
-          left: '2.3vw',
+          left: '2.2917vw',
           width: '5.2vw',
           height: '40vh',
         }}
@@ -290,9 +290,9 @@ export default function DashboardPage() {
             transition={transitionProps}
             className="absolute flex items-end justify-between z-20"
             style={{
-              bottom: '4.1vh',
-              left: '2.3vw',
-              right: '2.3vw',
+              bottom: '4.0741vh',
+              left: '2.2917vw',
+              right: '2.2917vw',
               height: '22vh',
               gap: '1.2vw',
             }}
@@ -361,15 +361,20 @@ export default function DashboardPage() {
           ========================================================= */}
       <AnimatePresence>
         {isEditorActive && (
-          <div className="absolute inset-0 z-20 flex items-center justify-between px-[9vw] py-[6vh] pointer-events-none">
-            {/* Panel Izquierdo: Conversaciones + Selector de Proyecto / Organización */}
+          <div className="absolute inset-0 z-20 pointer-events-none">
+            {/* Panel Izquierdo: Trabajos en draft (Carpetas) - Separado exactamente 44px (2.2917vw) del borde izquierdo */}
             <motion.div
               key="editor-sidebar"
               initial={{ opacity: 0, scale: 0.8, x: -50 }}
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.8, x: -50 }}
               transition={transitionProps}
-              className="pointer-events-auto"
+              className="pointer-events-auto absolute"
+              style={{
+                top: '14.9vh',
+                left: '2.2917vw',
+                bottom: '4.0741vh',
+              }}
             >
               <ConversationsSidebar
                 onBackToDashboard={handleBackToDashboard}
@@ -378,17 +383,29 @@ export default function DashboardPage() {
               />
             </motion.div>
 
-            {/* Panel Central/Derecho: Editor Workspace */}
-            <motion.div
-              key="editor-workspace"
-              initial={{ opacity: 0, scale: 0.8, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 30 }}
-              transition={transitionProps}
-              className="pointer-events-auto"
+            {/* Panel Central/Derecho: Editor Workspace Centrado visualmente por su centro (1091px @ 1920px = 56.8229vw) */}
+            <div
+              className="absolute inset-x-0 flex justify-center pointer-events-none z-20"
+              style={{
+                top: '14.9vh',
+                bottom: '4.0741vh',
+              }}
             >
-              <PostEditorWorkspace initialMedia={selectedFiles} />
-            </motion.div>
+              <motion.div
+                key="editor-workspace"
+                initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 30 }}
+                transition={transitionProps}
+                className="pointer-events-auto flex flex-col items-center justify-between"
+                style={{
+                  width: '56.8229vw',
+                  height: '100%',
+                }}
+              >
+                <PostEditorWorkspace initialMedia={selectedFiles} />
+              </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>
