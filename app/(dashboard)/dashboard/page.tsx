@@ -86,7 +86,7 @@ export default function DashboardPage() {
           ========================================================= */}
       <div
         className="absolute flex items-center z-40"
-        style={{ top: '4.1vh', left: '2.3vw', gap: '0.6vw' }}
+        style={{ top: '4.0741vh', left: '2.2917vw', gap: '0.6vw' }}
       >
         <div
           className="rounded-full text-sm font-semibold text-black flex items-center justify-center select-none shadow-sm"
@@ -112,12 +112,12 @@ export default function DashboardPage() {
 
       {/* =========================================================
           TÍTULO NUH: En modo Editor se encoge y se coloca arriba a la derecha
-          Padding al límite superior (4.1vh) y derecho (2.3vw)
+          Padding al límite superior (44px = 4.0741vh) y derecho (44px = 2.2917vw)
           ========================================================= */}
       <motion.div
         animate={{
-          top: isEditorActive ? '4.1vh' : '8vh',
-          right: isEditorActive ? '2.3vw' : '0vw',
+          top: isEditorActive ? '4.0741vh' : '8vh',
+          right: isEditorActive ? '2.2917vw' : '0vw',
           left: isEditorActive ? 'auto' : '0vw',
           width: isEditorActive ? 'auto' : '100%',
           scale: isEditorActive ? 0.22 : 1,
@@ -151,7 +151,7 @@ export default function DashboardPage() {
         className="absolute z-30"
         style={{
           top: '14.9vh',
-          left: '2.3vw',
+          left: '2.2917vw',
           width: '5.2vw',
           height: '40vh',
         }}
@@ -334,9 +334,9 @@ export default function DashboardPage() {
             transition={transitionProps}
             className="absolute flex items-end justify-between z-20"
             style={{
-              bottom: '4.1vh',
-              left: '2.3vw',
-              right: '2.3vw',
+              bottom: '4.0741vh',
+              left: '2.2917vw',
+              right: '2.2917vw',
               height: '22vh',
               gap: '1.2vw',
             }}
@@ -405,15 +405,20 @@ export default function DashboardPage() {
           ========================================================= */}
       <AnimatePresence>
         {isEditorActive && (
-          <div className="absolute inset-0 z-20 flex items-center justify-between px-[9vw] py-[6vh] pointer-events-none">
-            {/* Panel Izquierdo: Conversaciones + Selector de Proyecto / Organización */}
+          <div className="absolute inset-0 z-20 pointer-events-none">
+            {/* Panel Izquierdo: Trabajos en draft (Carpetas) - Separado exactamente 44px (2.2917vw) del borde izquierdo */}
             <motion.div
               key="editor-sidebar"
               initial={{ opacity: 0, scale: 0.8, x: -50 }}
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.8, x: -50 }}
               transition={transitionProps}
-              className="pointer-events-auto"
+              className="pointer-events-auto absolute"
+              style={{
+                top: '14.9vh',
+                left: '2.2917vw',
+                bottom: '4.0741vh',
+              }}
             >
               <ConversationsSidebar
                 onBackToDashboard={handleBackToDashboard}
@@ -423,161 +428,29 @@ export default function DashboardPage() {
               />
             </motion.div>
 
-            {/* Panel Central/Derecho: Editor Workspace */}
-            <motion.div
-              key="editor-workspace"
-              initial={{ opacity: 0, scale: 0.8, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 30 }}
-              transition={transitionProps}
-              className="pointer-events-auto"
+            {/* Panel Central/Derecho: Editor Workspace Centrado visualmente por su centro (1091px @ 1920px = 56.8229vw) */}
+            <div
+              className="absolute inset-x-0 flex justify-center pointer-events-none z-20"
+              style={{
+                top: '14.9vh',
+                bottom: '4.0741vh',
+              }}
             >
-              <PostEditorWorkspace
-                initialMedia={selectedFiles}
-                activeOrgId={selectedOrg}
-                activeConversation={activeConversation}
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* =========================================================
-          MODALES INTERACTIVOS EMERGENTES
-          ========================================================= */}
-      <AnimatePresence>
-        {activeModal && activeModal !== 'org' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-black/10 text-black relative flex flex-col gap-4"
-            >
-              {/* Botón cerrar */}
-              <button
-                onClick={() => setActiveModal(null)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+              <motion.div
+                key="editor-workspace"
+                initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 30 }}
+                transition={transitionProps}
+                className="pointer-events-auto flex flex-col items-center justify-between"
+                style={{
+                  width: '56.8229vw',
+                  height: '100%',
+                }}
               >
-                ✕
-              </button>
-
-              {/* Modal Perfil */}
-              {activeModal === 'profile' && (
-                <>
-                  <h3 className="text-lg font-black uppercase tracking-tight">Perfil de Usuario</h3>
-                  <div className="flex items-center gap-4 py-2 border-y border-black/5">
-                    <div className="w-12 h-12 rounded-full bg-[#C4C4C4] font-bold text-base flex items-center justify-center text-black">
-                      BV
-                    </div>
-                    <div>
-                      <p className="font-extrabold text-sm">Build For Venezuela</p>
-                      <p className="text-xs text-[#666666]">Plan PRO Activo</p>
-                    </div>
-                  </div>
-                  <div className="text-xs text-[#555555] space-y-1">
-                    <p><strong>Organización actual:</strong> {orgNames[selectedOrg]}</p>
-                    <p><strong>Estado:</strong> Conectado y Verificado</p>
-                  </div>
-                </>
-              )}
-
-              {/* Modal Almacenamiento */}
-              {activeModal === 'storage' && (
-                <>
-                  <h3 className="text-lg font-black uppercase tracking-tight">Desglose de Almacenamiento</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span>Cloudflare R2 Bucket</span>
-                      <span>3,500 GB / 3,688 GB</span>
-                    </div>
-                    <StorageBar usedGB={3500} totalGB={3688} />
-                    <div className="p-3 bg-[#F5F5F5] rounded-2xl text-xs text-[#555555] space-y-1">
-                      <p>📷 Imágenes: <strong>2,100 GB</strong></p>
-                      <p>🎥 Videos HD: <strong>1,400 GB</strong></p>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Modal Alcance */}
-              {activeModal === 'reach' && (
-                <>
-                  <h3 className="text-lg font-black uppercase tracking-tight">Alcance Total del Mes</h3>
-                  <div className="grid grid-cols-2 gap-3 py-2">
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5]">
-                      <p className="text-[10px] uppercase font-bold text-[#666666]">Facebook</p>
-                      <p className="text-xl font-black">112,400</p>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5]">
-                      <p className="text-[10px] uppercase font-bold text-[#666666]">Instagram</p>
-                      <p className="text-xl font-black">94,200</p>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5]">
-                      <p className="text-[10px] uppercase font-bold text-[#666666]">LinkedIn</p>
-                      <p className="text-xl font-black">28,100</p>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5]">
-                      <p className="text-[10px] uppercase font-bold text-[#666666]">X (Twitter)</p>
-                      <p className="text-xl font-black">17,300</p>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Modal Planificador */}
-              {activeModal === 'planner' && (
-                <>
-                  <h3 className="text-lg font-black uppercase tracking-tight">Publicaciones Programadas</h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5] flex justify-between items-center text-xs">
-                      <div>
-                        <p className="font-bold">Lanzamiento Campaña V2</p>
-                        <p className="text-[10px] text-[#666666]">Hoy, 18:00 hrs (FB, IG)</p>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full bg-black text-white text-[10px] font-bold">Programado</span>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5] flex justify-between items-center text-xs">
-                      <div>
-                        <p className="font-bold">Resumen Semanal de Logros</p>
-                        <p className="text-[10px] text-[#666666]">Mañana, 10:00 hrs (IN)</p>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full bg-black text-white text-[10px] font-bold">Programado</span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Modal Comentarios */}
-              {activeModal === 'comments' && (
-                <>
-                  <h3 className="text-lg font-black uppercase tracking-tight">Bandeja de Comentarios (100 Nuevos)</h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs">
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5]">
-                      <div className="flex justify-between font-bold mb-1">
-                        <span>@carlos_dev</span>
-                        <span className="text-[10px] text-[#888888]">Hace 5m (Instagram)</span>
-                      </div>
-                      <p className="text-[#444444]">¡Excelente iniciativa para el proyecto! 🚀</p>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[#F5F5F5]">
-                      <div className="flex justify-between font-bold mb-1">
-                        <span>@maria_mkt</span>
-                        <span className="text-[10px] text-[#888888]">Hace 18m (LinkedIn)</span>
-                      </div>
-                      <p className="text-[#444444]">¿Dónde podemos ver los detalles del código?</p>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <button
-                onClick={() => setActiveModal(null)}
-                className="w-full py-2.5 rounded-full bg-black text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 transition-all active:scale-95 cursor-pointer mt-2"
-              >
-                Cerrar
-              </button>
-            </motion.div>
+                <PostEditorWorkspace initialMedia={selectedFiles} />
+              </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>

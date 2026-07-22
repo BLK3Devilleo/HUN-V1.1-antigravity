@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { publishPostAction } from '@/app/actions/post';
 
 interface SelectedMedia {
   file?: File;
@@ -12,307 +10,328 @@ interface SelectedMedia {
 
 interface PostEditorWorkspaceProps {
   initialMedia: SelectedMedia[];
-  activeOrgId?: string;
-  activeConversation?: { id: string; title: string; date: string } | null;
+  currentPostTitle?: string;
 }
 
-const PLATFORMS = [
-  { id: 'facebook', label: 'Facebook', color: '#1877F2', icon: 'FB' },
-  { id: 'instagram', label: 'Instagram', color: '#E4405F', icon: 'IG' },
-  { id: 'x', label: 'X', color: '#000000', icon: 'X' },
-  { id: 'linkedin', label: 'LinkedIn', color: '#0A66C2', icon: 'IN' },
-  { id: 'tiktok', label: 'TikTok', color: '#000000', icon: 'TT' },
+const DEFAULT_IMAGES = [
+  'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80',
+];
+
+const SOCIAL_PLATFORMS = [
+  { id: 'facebook', name: 'Facebook', icon: 'f' },
+  { id: 'instagram', name: 'Instagram', icon: '📷' },
+  { id: 'x', name: 'X', icon: '𝕏' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'in' },
+  { id: 'tiktok', name: 'TikTok', icon: '🎵' },
 ];
 
 export default function PostEditorWorkspace({
   initialMedia,
-  activeOrgId = 'org-1',
-  activeConversation,
+  currentPostTitle = 'Salvemos los árboles',
 }: PostEditorWorkspaceProps) {
-  const [caption, setCaption] = useState(
-    activeConversation
-      ? `📝 ${activeConversation.title}: Optimiza la comunicación en tiempo real.`
-      : '🚀 ¡Gran lanzamiento! Optimiza la comunicación de tus proyectos en tiempo real con Build For Venezuela.'
-  );
-  const [mediaList, setMediaList] = useState<SelectedMedia[]>(initialMedia);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook', 'instagram']);
-  const [activePlatformPreview, setActivePlatformPreview] = useState<string>('instagram');
+  const [caption, setCaption] = useState('');
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [selectedPlatform, setSelectedPlatform] = useState('facebook');
+  const [thumbnails, setThumbnails] = useState<string[]>(
+    initialMedia.length > 0
+      ? initialMedia.map((m) => m.url)
+      : DEFAULT_IMAGES
+  );
 
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [statusType, setStatusType] = useState<'success' | 'error' | null>(null);
+  const activeMediaUrl = thumbnails[activeMediaIndex] || DEFAULT_IMAGES[0];
+  const isVideo = initialMedia[activeMediaIndex]?.isVideo || false;
 
-  // Mover elemento en el carrusel para cambiar el orden
-  const moveMedia = (fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= mediaList.length) return;
-    const updated = [...mediaList];
-    const [moved] = updated.splice(fromIndex, 1);
-    updated.splice(toIndex, 0, moved);
-    setMediaList(updated);
-    if (activeMediaIndex === fromIndex) setActiveMediaIndex(toIndex);
-  };
-
-  // Toggle de selección simple de red social
-  const togglePlatform = (id: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
-  };
-
-  // Enviar Publicación al Backend (Supabase + Webhook n8n)
-  const handlePublish = async () => {
-    if (!caption.trim() && mediaList.length === 0) {
-      setStatusType('error');
-      setStatusMessage('Ingresa una descripción o multimedia.');
-      return;
-    }
-
-    if (selectedPlatforms.length === 0) {
-      setStatusType('error');
-      setStatusMessage('Selecciona al menos una red social.');
-      return;
-    }
-
-    setIsPublishing(true);
-    setStatusMessage(null);
-
-    const mediaUrls = mediaList.map((m) => m.url);
-    const result = await publishPostAction({
-      title: activeConversation?.title || 'Publicación desde NUH Workspace',
-      caption,
-      mediaUrls,
-      platforms: selectedPlatforms,
-      orgId: activeOrgId,
-    });
-
-    setIsPublishing(false);
-
-    if (result.success) {
-      setStatusType('success');
-      setStatusMessage(result.message || '¡Publicación enviada a n8n y redes!');
-    } else {
-      setStatusType('error');
-      setStatusMessage(result.error || 'Ocurrió un error al publicar.');
+  // Manejar adición de nueva imagen
+  const handleAddImage = () => {
+    const nextImage =
+      DEFAULT_IMAGES[thumbnails.length % DEFAULT_IMAGES.length];
+    if (thumbnails.length < 7) {
+      setThumbnails((prev) => [...prev, nextImage]);
     }
   };
-
-  const activeMedia = mediaList[activeMediaIndex] || mediaList[0];
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-[65vw]">
-      {/* =========================================================
-          BLOQUE SUPERIOR: PREVISUALIZACIÓN DERECHA E IZQUIERDA
-          ========================================================= */}
-      <div className="grid grid-cols-12 gap-5 w-full items-stretch">
-        {/* 1. SECCIÓN MULTIMEDIA Y CARRUSEL INTERACTIVO (4 cols) */}
-        <div className="col-span-5 bg-white/80 backdrop-blur-md rounded-3xl p-4 border border-black/10 shadow-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 px-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-black">
-              Carrusel / Multimedia ({mediaList.length})
-            </span>
-            <span className="text-[10px] font-bold text-[#666666] bg-black/5 px-2 py-0.5 rounded-full">
-              {activePlatformPreview.toUpperCase()} FORMAT
-            </span>
-          </div>
+    <div className="flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative">
+      {/* TÍTULO SUPERIOR CENTRADO */}
+      <h2 className="text-sm font-bold text-black tracking-tight mb-1 text-center">
+        {currentPostTitle}
+      </h2>
 
-          {/* Display Principal de Multimedia */}
-          <div className="relative w-full h-[28vh] bg-neutral-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center group">
-            {activeMedia ? (
-              activeMedia.isVideo ? (
-                <video src={activeMedia.url} controls className="w-full h-full object-contain" />
+      {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) x 398px (36.8519vh) CENTRADO */}
+      <div className="relative w-full flex items-center justify-center">
+        {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO (IMAGEN + DOTS + DESCRIPCIÓN) - 1091px x 398px */}
+        <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3 items-center justify-between w-[56.8229vw] h-[36.8519vh] shadow-sm">
+          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN (SIEMPRE CUADRADO CON ASPECT-SQUARE, ALTO DE REFERENCIA 84.4221%) Y PUNTOS DE PAGINACIÓN */}
+          <div
+            className="flex flex-col items-center justify-between h-full"
+            style={{
+              marginLeft: '1.3749%',
+            }}
+          >
+            {/* CONTENEDOR DE LA IMAGEN (336px x 336px) - SIEMPRE CUADRADO, TOMA DE REFERENCIA EL ALTO DEL CONTENEDOR GENERAL */}
+            <div
+              className="aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center shadow-sm"
+              style={{
+                height: '84.4221%',
+                marginTop: '3.7688%',
+              }}
+            >
+              {isVideo ? (
+                <video
+                  src={activeMediaUrl}
+                  controls
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <img src={activeMedia.url} alt="media-preview" className="w-full h-full object-cover" />
-              )
-            ) : (
-              <div className="text-white/40 text-xs font-semibold">Sin multimedia</div>
-            )}
-
-            {/* Badge de Posición de Carrusel */}
-            {mediaList.length > 1 && (
-              <div className="absolute top-3 right-3 bg-black/75 text-white text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
-                {activeMediaIndex + 1} / {mediaList.length}
-              </div>
-            )}
-          </div>
-
-          {/* Tiras de Miniaturas con Controles de Reordenamiento */}
-          <div className="mt-3 flex items-center gap-2 overflow-x-auto py-1 px-0.5 scrollbar-none">
-            {mediaList.map((item, idx) => (
-              <div
-                key={idx}
-                onClick={() => setActiveMediaIndex(idx)}
-                className={`relative flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                  idx === activeMediaIndex ? 'border-black scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                {item.isVideo ? (
-                  <video src={item.url} className="w-full h-full object-cover pointer-events-none" />
-                ) : (
-                  <img src={item.url} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
-                )}
-
-                {/* Badge de Orden 1, 2, 3 */}
-                <div className="absolute top-0.5 left-0.5 bg-black text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                  {idx + 1}
-                </div>
-
-                {/* Controles de Mover Orden (Izquierda / Derecha) */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex items-center justify-between px-1 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveMedia(idx, idx - 1);
-                    }}
-                    disabled={idx === 0}
-                    className="text-white text-xs font-black disabled:opacity-30 hover:scale-125"
-                  >
-                    ◄
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveMedia(idx, idx + 1);
-                    }}
-                    disabled={idx === mediaList.length - 1}
-                    className="text-white text-xs font-black disabled:opacity-30 hover:scale-125"
-                  >
-                    ►
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 2. RECUADRO DE PREVISUALIZACIÓN DE TEXTO / POST (5 cols) */}
-        <div className="col-span-5 bg-white/90 backdrop-blur-md rounded-3xl p-5 border border-black/10 shadow-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-black">
-              Vista Previa de Publicación
-            </span>
-            <span className="text-[10px] font-bold text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full uppercase">
-              En Vivo
-            </span>
-          </div>
-
-          {/* Card Mockup de Red Social */}
-          <div className="flex-1 bg-[#FAFAFA] border border-black/10 rounded-2xl p-4 flex flex-col justify-between shadow-inner">
-            {/* Header del Post */}
-            <div className="flex items-center gap-2.5 pb-2 border-b border-black/5">
-              <div className="w-8 h-8 rounded-full bg-[#C4C4C4] font-bold text-xs flex items-center justify-center text-black">
-                BV
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-extrabold text-black leading-tight">
-                  Build For Venezuela
-                </span>
-                <span className="text-[9px] font-medium text-[#888888]">
-                  Previsualización en {activePlatformPreview}
-                </span>
-              </div>
+                <img
+                  src={activeMediaUrl}
+                  alt="active-media"
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
 
-            {/* Cuerpo del Texto Introducido */}
-            <div className="my-3 flex-1 overflow-y-auto max-h-[18vh] text-xs font-normal text-[#222222] whitespace-pre-wrap leading-relaxed pr-1">
-              {caption || <span className="text-[#A0A0A0] italic">El texto introducido abajo aparecerá aquí...</span>}
-            </div>
-
-            {/* Footer de Interacción */}
-            <div className="pt-2 border-t border-black/5 flex items-center justify-between text-[#777777] text-[11px] font-semibold">
-              <span>❤️ 2.4k Me gusta</span>
-              <span>💬 148 Comentarios</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. SELECTOR DE REDES SOCIALES (2 cols) */}
-        <div className="col-span-2 bg-white/80 backdrop-blur-md rounded-3xl p-3 border border-black/10 shadow-xl flex flex-col items-center justify-between">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-black text-center mb-1">
-            Redes
-          </span>
-
-          <div className="flex flex-col gap-2.5 w-full items-center">
-            {PLATFORMS.map((p) => {
-              const isSelected = selectedPlatforms.includes(p.id);
-              const isActivePreview = activePlatformPreview === p.id;
-
-              return (
-                <div key={p.id} className="relative group w-full flex justify-center">
-                  <motion.button
-                    whileHover={{ scale: 1.08 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => togglePlatform(p.id)}
-                    onMouseDown={() => setActivePlatformPreview(p.id)}
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xs font-extrabold text-white transition-all shadow-md ${
-                      isSelected ? 'ring-2 ring-black ring-offset-2' : 'opacity-40 hover:opacity-80'
+            {/* PUNTOS DE PAGINACIÓN DE CARRUSEL (Centrados con la imagen, 15px = 3.7688% del borde inferior) */}
+            <div
+              className="flex items-center justify-center gap-1.5 w-full"
+              style={{
+                marginBottom: '3.7688%',
+              }}
+            >
+              {Array.from({ length: Math.max(7, thumbnails.length) }).map(
+                (_, idx) => (
+                  <span
+                    key={idx}
+                    className={`rounded-full transition-all ${
+                      idx === activeMediaIndex
+                        ? 'w-2 h-2 bg-[#555555]'
+                        : 'w-1.5 h-1.5 bg-[#BBBBBB]'
                     }`}
-                    style={{ background: p.color }}
-                    title={`Clic: ${isSelected ? 'Desmarcar' : 'Seleccionar'} | Mantener: Ver previsualización`}
-                  >
-                    {p.icon}
-                  </motion.button>
+                  />
+                )
+              )}
+            </div>
+          </div>
 
-                  {/* Indicador de Red activa para previsualizar */}
-                  {isActivePreview && (
-                    <div className="absolute -right-1 top-0 w-2.5 h-2.5 rounded-full bg-[#10B981] border-2 border-white" />
+          {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO (SE ADAPTA AUTOMÁTICAMENTE CON FLEX-1, ALTO DE 91.4573%, CENTRADO VERTICALMENTE) */}
+          <div
+            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center"
+            style={{
+              height: '91.4573%',
+              marginRight: '1.3749%',
+            }}
+          >
+            {caption.trim() ? (
+              <p className="text-xs font-normal text-black leading-relaxed whitespace-pre-wrap">
+                {caption}
+              </p>
+            ) : (
+              <span className="text-xs italic text-[#999999] font-normal">
+                Descripción de contenido
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* BARRA DERECHA DE REDES SOCIALES (Ubicada al lado derecho del recuadro de 1091px con su separación) */}
+        <div className="absolute left-[calc(50%+28.41145vw+1.2vw)] flex flex-col items-center gap-2">
+          {/* Botón superior chevron down */}
+          <button className="w-11 h-11 bg-[#888888] hover:bg-[#777777] text-white rounded-full flex items-center justify-center shadow-sm transition-transform active:scale-95">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          {/* Barra vertical de redes sociales */}
+          <div className="bg-[#D9D9D9] p-1 rounded-full flex flex-col gap-1.5 border border-black/10 shadow-sm">
+            {SOCIAL_PLATFORMS.map((plat) => {
+              const isSelected = selectedPlatform === plat.id;
+              return (
+                <button
+                  key={plat.id}
+                  onClick={() => setSelectedPlatform(plat.id)}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isSelected
+                    ? 'bg-black text-white shadow-md scale-105'
+                    : 'bg-black/80 text-white/90 hover:bg-black'
+                    }`}
+                  title={plat.name}
+                >
+                  {plat.id === 'facebook' && 'f'}
+                  {plat.id === 'instagram' && (
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                    </svg>
                   )}
-                </div>
+                  {plat.id === 'x' && '𝕏'}
+                  {plat.id === 'linkedin' && 'in'}
+                  {plat.id === 'tiktok' && (
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+                    </svg>
+                  )}
+                </button>
               );
             })}
           </div>
-
-          <span className="text-[9px] font-bold text-[#888888] text-center mt-1">
-            {selectedPlatforms.length} elegida(s)
-          </span>
         </div>
       </div>
 
-      {/* Banner de Notificación de Estado */}
-      <AnimatePresence>
-        {statusMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`px-6 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 cursor-pointer ${
-              statusType === 'success' ? 'bg-[#10B981] text-white' : 'bg-[#FF4D4D] text-white'
-            }`}
-            onClick={() => setStatusMessage(null)}
-          >
-            <span>{statusType === 'success' ? '✅' : '⚠️'}</span>
-            <span>{statusMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* BARRA INTERMEDIA DE CONTROL Y MINIATURAS (838px x 129px) + BOTONES (217px x 61px) - ANCHO TOTAL 1091px (56.8229vw) */}
+      <div
+        className="flex flex-col items-center gap-1 w-[56.8229vw]"
+        style={{ marginTop: '.2vh' }}
+      >
+        <div className="w-full flex items-stretch justify-between">
+          {/* Contenedor general de miniaturas (838px x 129px = 43.6458vw x 11.9444vh) */}
+          <div className="w-[43.6458vw] h-[11.9444vh] bg-[#E5E5E5]/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[22px] p-3 px-4 flex items-center justify-between shadow-sm">
+            {/* Fila de 7 cajas de miniaturas */}
+            <div className="flex items-center gap-2.5">
+              {Array.from({ length: 7 }).map((_, idx) => {
+                const thumbUrl = thumbnails[idx];
+                const isActive = idx === activeMediaIndex;
 
-      {/* =========================================================
-          BLOQUE INFERIOR: CAJA DE TEXTO EN FORMA DE PÍLDORA CON BOTÓN PUBLICAR CONECTADO
-          ========================================================= */}
-      <div className="w-full relative flex items-center justify-center">
-        <div className="w-full max-w-[55vw] bg-white rounded-full p-2.5 px-6 border border-black/15 shadow-2xl flex items-center gap-4">
-          <input
-            type="text"
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => thumbUrl && setActiveMediaIndex(idx)}
+                    className={`w-14 h-14 rounded-2xl overflow-hidden cursor-pointer transition-all flex items-center justify-center ${thumbUrl
+                      ? isActive
+                        ? 'border-2 border-black scale-105 shadow-md'
+                        : 'border border-black/20 hover:border-black'
+                      : 'border-2 border-[#888888]/40 bg-white'
+                      }`}
+                  >
+                    {thumbUrl ? (
+                      <img
+                        src={thumbUrl}
+                        alt={`thumb-${idx}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Pila vertical de 2 botones de 217px x 61px (11.3021vw x 5.6481vh) con gap de 6px (0.5556vh) */}
+          <div
+            className="flex flex-col justify-between"
+            style={{
+              width: '11.3021vw',
+              height: '11.9444vh',
+              marginLeft: '1.875vw',
+            }}
+          >
+            {/* Primer botón "+ Añadir" (217px x 61px) */}
+            <button
+              onClick={handleAddImage}
+              style={{
+                width: '11.3021vw',
+                height: '5.6481vh',
+              }}
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center"
+            >
+              + Añadir
+            </button>
+
+            {/* Segundo botón "Imagen/Carrusel" (217px x 61px) */}
+            <button
+              style={{
+                width: '11.3021vw',
+                height: '5.6481vh',
+              }}
+              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center"
+            >
+              Imagen/Carrusel
+            </button>
+          </div>
+        </div>
+
+        {/* Flechas de navegación centradas debajo del contenedor de miniaturas */}
+        <div className="w-[43.6458vw] flex items-center justify-center gap-6 text-[#666666] self-start mt-1">
+          <button
+            onClick={() =>
+              setActiveMediaIndex((prev) => Math.max(0, prev - 1))
+            }
+            className="hover:text-black font-extrabold text-sm"
+          >
+            ◄
+          </button>
+          <button
+            onClick={() =>
+              setActiveMediaIndex((prev) =>
+                Math.min(thumbnails.length - 1, prev + 1)
+              )
+            }
+            className="hover:text-black font-extrabold text-sm"
+          >
+            ►
+          </button>
+        </div>
+      </div>
+
+      {/* CAJA DE TEXTO INFERIOR EN FORMA DE PÍLDORA CON BOTONES DE ACCIÓN */}
+      <div className="flex items-center gap-3 w-[56.8229vw] mt-2">
+        <div className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 shadow-sm min-h-[10vh]">
+          <textarea
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            disabled={isPublishing}
-            placeholder="Escribe aquí la descripción de tu publicación..."
-            className="flex-1 bg-transparent text-sm font-medium text-black placeholder:text-[#999999] outline-none border-none disabled:opacity-50"
+            placeholder="Escribe la descripción de la publicación..."
+            rows={2}
+            className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
           />
+        </div>
+
+        {/* Pila vertical de botones redondos (Calendario Azul + Confirmar Gris) */}
+        <div className="flex flex-col gap-2">
+          <button
+            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95"
+            title="Programar publicación"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </button>
 
           <button
-            onClick={handlePublish}
-            disabled={isPublishing}
-            className="px-6 py-2.5 rounded-full bg-black text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 transition-all active:scale-95 flex-shrink-0 shadow-md cursor-pointer disabled:bg-neutral-400 flex items-center gap-2"
+            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95"
+            title="Confirmar y publicar"
           >
-            {isPublishing ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Publicando...</span>
-              </>
-            ) : (
-              <span>Publicar</span>
-            )}
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
           </button>
         </div>
       </div>
