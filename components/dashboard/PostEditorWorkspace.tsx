@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SelectedMedia {
@@ -40,18 +40,65 @@ export default function PostEditorWorkspace({
   initialMedia,
   currentPostTitle = 'Salvemos los árboles',
 }: PostEditorWorkspaceProps) {
-  // Estado de Bloques de Variaciones de Contenido (Guardados por sesión/conversación)
-  const [variationBlocks, setVariationBlocks] = useState<ContentVariationBlock[]>([
-    {
-      id: 'variation-1',
-      number: 1,
-      caption: '',
-      selectedPlatforms: ['facebook', 'instagram'],
-      thumbnails: initialMedia.length > 0 ? initialMedia.map((m) => m.url) : DEFAULT_IMAGES,
-      activeMediaIndex: 0,
-    },
-  ]);
-  const [activeBlockId, setActiveBlockId] = useState<string>('variation-1');
+  // Función para partir multimedia en bloques: Imágenes juntas en Bloque 1, cada Video en su propio Bloque
+  const buildInitialBlocks = (): ContentVariationBlock[] => {
+    if (initialMedia.length === 0) {
+      return [
+        {
+          id: 'variation-1',
+          number: 1,
+          caption: '',
+          selectedPlatforms: ['facebook', 'instagram'],
+          thumbnails: [],
+          activeMediaIndex: 0,
+        },
+      ];
+    }
+
+    const images = initialMedia.filter((f) => !f.isVideo);
+    const videos = initialMedia.filter((f) => f.isVideo);
+
+    const blocks: ContentVariationBlock[] = [];
+    let num = 1;
+
+    if (images.length > 0) {
+      blocks.push({
+        id: `variation-${num}`,
+        number: num++,
+        caption: '',
+        selectedPlatforms: ['facebook', 'instagram'],
+        thumbnails: images.map((img) => img.url),
+        activeMediaIndex: 0,
+      });
+    }
+
+    videos.forEach((vid, idx) => {
+      blocks.push({
+        id: `variation-${num}`,
+        number: num++,
+        caption: '',
+        selectedPlatforms: ['facebook', 'instagram'],
+        thumbnails: [vid.url],
+        activeMediaIndex: 0,
+      });
+    });
+
+    return blocks.length > 0
+      ? blocks
+      : [
+          {
+            id: 'variation-1',
+            number: 1,
+            caption: '',
+            selectedPlatforms: ['facebook', 'instagram'],
+            thumbnails: [],
+            activeMediaIndex: 0,
+          },
+        ];
+  };
+
+  const [variationBlocks, setVariationBlocks] = useState<ContentVariationBlock[]>(buildInitialBlocks);
+  const [activeBlockId, setActiveBlockId] = useState<string>(variationBlocks[0]?.id || 'variation-1');
   const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
 
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
@@ -60,8 +107,12 @@ export default function PostEditorWorkspace({
 
   // Obtener el bloque activo actual
   const activeBlock = variationBlocks.find((b) => b.id === activeBlockId) || variationBlocks[0];
-  const activeMediaUrl = activeBlock.thumbnails[activeBlock.activeMediaIndex] || DEFAULT_IMAGES[0];
-  const isVideo = activeMediaUrl.endsWith('.mp4') || activeMediaUrl.includes('video');
+  const activeMediaUrl = activeBlock.thumbnails[activeBlock.activeMediaIndex] || '';
+  const isVideo =
+    activeMediaUrl.endsWith('.mp4') ||
+    activeMediaUrl.endsWith('.webm') ||
+    activeMediaUrl.includes('video') ||
+    activeMediaUrl.startsWith('blob:') && activeBlock.thumbnails.some((url) => url === activeMediaUrl);
 
   // Actualizar descripción del bloque activo
   const handleCaptionChange = (text: string) => {
@@ -84,20 +135,79 @@ export default function PostEditorWorkspace({
     );
   };
 
-  // Selector de multimedia local en el workspace para el bloque activo
+  // Selector de multimedia local: Agrupa imágenes en 1 bloque y crea 1 bloque individual por cada video
   const handleWorkspaceFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newUrls = Array.from(e.target.files).map((file) => URL.createObjectURL(file));
-      setVariationBlocks((prev) =>
-        prev.map((b) => {
-          if (b.id !== activeBlock.id) return b;
-          return {
-            ...b,
-            thumbnails: [...b.thumbnails, ...newUrls],
-            activeMediaIndex: b.thumbnails.length,
-          };
-        })
-      );
+      const filesArray = Array.from(e.target.files).map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+        isVideo: file.type.startsWith('video/'),
+      }));
+
+      const images = filesArray.filter((f) => !f.isVideo);
+      const videos = filesArray.filter((f) => f.isVideo);
+
+      setVariationBlocks((prev) => {
+        let currentBlocks = [...prev];
+
+        // Si el bloque actual está vacío, lo usamos para las imágenes o reemplazamos
+        const isCurrentEmpty = activeBlock.thumbnails.length === 0;
+
+        let nextNum = currentBlocks.length + 1;
+        const createdBlocks: ContentVariationBlock[] = [];
+
+        if (images.length > 0) {
+          if (isCurrentEmpty) {
+            currentBlocks = currentBlocks.map((b) =>
+              b.id === activeBlock.id
+                ? {
+                    ...b,
+                    thumbnails: images.map((img) => img.url),
+                    activeMediaIndex: 0,
+                  }
+                : b
+            );
+          } else {
+            createdBlocks.push({
+              id: `variation-${Date.now()}-img`,
+              number: nextNum++,
+              caption: activeBlock.caption || '',
+              selectedPlatforms: [...activeBlock.selectedPlatforms],
+              thumbnails: images.map((img) => img.url),
+              activeMediaIndex: 0,
+            });
+          }
+        }
+
+        videos.forEach((vid, idx) => {
+          if (isCurrentEmpty && images.length === 0 && idx === 0) {
+            currentBlocks = currentBlocks.map((b) =>
+              b.id === activeBlock.id
+                ? {
+                    ...b,
+                    thumbnails: [vid.url],
+                    activeMediaIndex: 0,
+                  }
+                : b
+            );
+          } else {
+            createdBlocks.push({
+              id: `variation-${Date.now()}-vid-${idx}`,
+              number: nextNum++,
+              caption: activeBlock.caption || '',
+              selectedPlatforms: [...activeBlock.selectedPlatforms],
+              thumbnails: [vid.url],
+              activeMediaIndex: 0,
+            });
+          }
+        });
+
+        const updatedList = [...currentBlocks, ...createdBlocks];
+        if (createdBlocks.length > 0) {
+          setActiveBlockId(createdBlocks[0].id);
+        }
+        return updatedList;
+      });
     }
   };
 
@@ -111,14 +221,14 @@ export default function PostEditorWorkspace({
         const newIndex = Math.min(b.activeMediaIndex, Math.max(0, updatedThumbnails.length - 1));
         return {
           ...b,
-          thumbnails: updatedThumbnails.length > 0 ? updatedThumbnails : [DEFAULT_IMAGES[0]],
+          thumbnails: updatedThumbnails,
           activeMediaIndex: newIndex,
         };
       })
     );
   };
 
-  // Crear un nuevo Bloque de Variación de Contenido (+)
+  // Crear un nuevo Bloque de Variación de Contenido vacio (+)
   const handleAddVariationBlock = () => {
     const nextNumber = variationBlocks.length + 1;
     const newBlock: ContentVariationBlock = {
@@ -126,7 +236,7 @@ export default function PostEditorWorkspace({
       number: nextNumber,
       caption: '',
       selectedPlatforms: ['facebook'],
-      thumbnails: [...activeBlock.thumbnails],
+      thumbnails: [],
       activeMediaIndex: 0,
     };
     setVariationBlocks((prev) => [...prev, newBlock]);
@@ -210,6 +320,8 @@ export default function PostEditorWorkspace({
     selectionRanges.push({ start: rangeStart, end: SOCIAL_PLATFORMS.length - 1 });
   }
 
+  const hasMediaInActiveBlock = activeBlock.thumbnails.length > 0;
+
   return (
     <div className="flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative">
       {/* Input oculto de archivos para el botón + Añadir */}
@@ -227,85 +339,111 @@ export default function PostEditorWorkspace({
         <h2 className="text-sm font-bold text-black tracking-tight text-center">
           {currentPostTitle}
         </h2>
-        <span className="text-[11px] font-black bg-black text-white px-2 py-0.5 rounded-full">
+        <span className="text-[11px] font-black bg-black text-white px-2.5 py-0.5 rounded-full">
           Variación {activeBlock.number}
         </span>
       </div>
 
       {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) x 398px (36.8519vh) CENTRADO */}
       <div className="relative w-full flex items-center justify-center">
-        {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO (IMAGEN + DOTS + DESCRIPCIÓN) - 1091px x 398px */}
-        <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3.5 items-center justify-between w-[56.8229vw] h-[36.8519vh]">
-          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN Y PUNTOS DE PAGINACIÓN */}
-          <div
-            className="flex flex-col items-center justify-between h-full"
-            style={{
-              width: '30.7974%',
-              marginLeft: '1.3749%',
-            }}
-          >
-            {/* CONTENEDOR DE LA IMAGEN (336px x 336px) - SIEMPRE CUADRADO */}
-            <div
-              className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group"
-              style={{
-                marginTop: '3.7688%',
-              }}
-            >
-              {isVideo ? (
-                <video
-                  src={activeMediaUrl}
-                  controls
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <img
-                  src={activeMediaUrl}
-                  alt="active-media"
-                  className="w-full h-full object-cover"
-                />
-              )}
-            </div>
+        {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO (IMAGEN + DOTS + DESCRIPCIÓN O CUADRO DE TEXTO CENTRADO) */}
+        <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex items-center justify-center w-[56.8229vw] h-[36.8519vh] relative">
+          
+          {hasMediaInActiveBlock ? (
+            /* VISTA CON MULTIMEDIA (COLUMNA IZQUIERDA IMAGEN/VIDEO + COLUMNA DERECHA TEXTO) */
+            <div className="flex gap-3.5 items-center justify-between w-full h-full">
+              {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN O VIDEO */}
+              <div
+                className="flex flex-col items-center justify-between h-full"
+                style={{
+                  width: '30.7974%',
+                  marginLeft: '1.3749%',
+                }}
+              >
+                <div
+                  className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group"
+                  style={{
+                    marginTop: '3.7688%',
+                  }}
+                >
+                  {isVideo ? (
+                    <video
+                      src={activeMediaUrl}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={activeMediaUrl}
+                      alt="active-media"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
 
-            {/* PUNTOS DE PAGINACIÓN DE CARRUSEL DE LA VARIACIÓN ACTIVA */}
-            <div
-              className="flex items-center justify-center gap-1.5 w-full"
-              style={{
-                marginBottom: '3.7688%',
-              }}
-            >
-              {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map(
-                (_, idx) => (
-                  <span
-                    key={idx}
-                    className={`rounded-full transition-all ${
-                      idx === activeBlock.activeMediaIndex
-                        ? 'w-2 h-2 bg-[#555555]'
-                        : 'w-1.5 h-1.5 bg-[#BBBBBB]'
-                    }`}
-                  />
-                )
-              )}
-            </div>
-          </div>
+                {/* PUNTOS DE PAGINACIÓN DE CARRUSEL DE LA VARIACIÓN ACTIVA */}
+                <div
+                  className="flex items-center justify-center gap-1.5 w-full"
+                  style={{
+                    marginBottom: '3.7688%',
+                  }}
+                >
+                  {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map(
+                    (_, idx) => (
+                      <span
+                        key={idx}
+                        className={`rounded-full transition-all ${
+                          idx === activeBlock.activeMediaIndex
+                            ? 'w-2 h-2 bg-[#555555]'
+                            : 'w-1.5 h-1.5 bg-[#BBBBBB]'
+                        }`}
+                      />
+                    )
+                  )}
+                </div>
+              </div>
 
-          {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO PARA LA VARIACIÓN ACTIVA */}
-          <div
-            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center"
-            style={{
-              height: '91.4573%',
-              marginRight: '1.3749%',
-            }}
-          >
-            {activeBlock.caption.trim() ? (
-              <p className="text-xs font-normal text-black leading-relaxed whitespace-pre-wrap">
-                {activeBlock.caption}
-              </p>
-            ) : (
-              <span className="text-xs italic text-[#999999] font-normal">
-                Descripción de contenido para Variación {activeBlock.number}
-              </span>
-            )}
-          </div>
+              {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO PARA LA VARIACIÓN ACTIVA */}
+              <div
+                className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center"
+                style={{
+                  height: '91.4573%',
+                  marginRight: '1.3749%',
+                }}
+              >
+                {activeBlock.caption.trim() ? (
+                  <p className="text-xs font-normal text-black leading-relaxed whitespace-pre-wrap">
+                    {activeBlock.caption}
+                  </p>
+                ) : (
+                  <span className="text-xs italic text-[#999999] font-normal">
+                    Descripción de contenido para Variación {activeBlock.number}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* VISTA SIN MULTIMEDIA: CUADRO DE TEXTO CENTRADO VERTICAL Y HORIZONTALMENTE CON BOTÓN "+ AÑADIR MULTIMEDIA" */
+            <div className="w-[88%] h-[88%] bg-white border-2 border-[#888888]/40 rounded-[20px] p-5 flex flex-col items-center justify-between shadow-sm">
+              <textarea
+                value={activeBlock.caption}
+                onChange={(e) => handleCaptionChange(e.target.value)}
+                placeholder={`Escribe la descripción de la Variación ${activeBlock.number}...`}
+                className="w-full flex-1 bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
+              />
+
+              {/* Botón "+ Añadir multimedia" dentro del cuadro de texto centrado */}
+              <button
+                onClick={handleAddImage}
+                className="mt-2 px-6 py-2.5 rounded-full text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-black border border-black/15 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span>Añadir multimedia (Imágenes o Videos)</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* BARRA DERECHA DE REDES SOCIALES + MENÚ DESPLEGABLE HORIZONTAL DE BLOQUES DE VARIACIÓN */}
@@ -604,11 +742,15 @@ export default function PostEditorWorkspace({
                   >
                     {thumbUrl ? (
                       <>
-                        <img
-                          src={thumbUrl}
-                          alt={`thumb-${idx}`}
-                          className="w-full h-full object-cover"
-                        />
+                        {thumbUrl.endsWith('.mp4') || thumbUrl.includes('video') ? (
+                          <video src={thumbUrl} className="w-full h-full object-cover" />
+                        ) : (
+                          <img
+                            src={thumbUrl}
+                            alt={`thumb-${idx}`}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                         {activeBlock.thumbnails.length > 1 && (
                           <button
                             onClick={(e) => handleRemoveMediaFromActiveBlock(idx, e)}

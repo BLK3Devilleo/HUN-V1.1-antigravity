@@ -43,7 +43,8 @@ export default function DashboardPage() {
   };
 
   const handleCrearClick = () => {
-    fileInputRef.current?.click();
+    setSelectedFiles([]);
+    setIsEditorActive(true);
   };
 
   const handleRemoveFile = (index: number) => {
