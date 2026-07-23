@@ -85,6 +85,10 @@ export default function DashboardPage() {
     setSelectedFiles([]);
   };
 
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Iniciar transición al Editor
   const handleConfirm = () => {
     setIsEditorActive(true);

@@ -21,6 +21,7 @@ export interface ContentVariationBlock {
 interface PostEditorWorkspaceProps {
   initialMedia: SelectedMedia[];
   currentPostTitle?: string;
+  activeOrgId?: string;
 }
 
 const DEFAULT_IMAGES = [
@@ -84,9 +85,66 @@ export default function PostEditorWorkspace({
     );
   };
 
+  const handleOpenPicker = () => {
+    workspaceFileInputRef.current?.click();
+  };
+
   // Selector de multimedia local en el workspace para el bloque activo
-  const handleWorkspaceFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+  const handleWorkspaceFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    try {
+      const { saveMediaRecord } = await import('@/app/actions/media');
+      const files = Array.from(e.target.files);
+      const newUrls: string[] = [];
+
+      for (const file of files) {
+        const localUrl = URL.createObjectURL(file);
+        try {
+          const res = await fetch('/api/r2/presign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: file.name,
+              mimeType: file.type || 'image/jpeg',
+              fileSize: file.size,
+            }),
+          });
+
+          if (res.ok) {
+            const { url: uploadUrl, publicUrl } = await res.json();
+            const putRes = await fetch(uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': file.type || 'image/jpeg' },
+              body: file,
+            });
+            if (putRes.ok) {
+              await saveMediaRecord(publicUrl, file.name);
+              newUrls.push(publicUrl);
+            } else {
+              newUrls.push(localUrl);
+            }
+          } else {
+            newUrls.push(localUrl);
+          }
+        } catch {
+          newUrls.push(localUrl);
+        }
+      }
+
+      if (newUrls.length > 0) {
+        setVariationBlocks((prev) =>
+          prev.map((b) => {
+            if (b.id !== activeBlock.id) return b;
+            return {
+              ...b,
+              thumbnails: [...b.thumbnails, ...newUrls],
+              activeMediaIndex: b.thumbnails.length,
+            };
+          })
+        );
+      }
+    } catch {
       const newUrls = Array.from(e.target.files).map((file) => URL.createObjectURL(file));
       setVariationBlocks((prev) =>
         prev.map((b) => {
@@ -98,6 +156,10 @@ export default function PostEditorWorkspace({
           };
         })
       );
+    }
+
+    if (workspaceFileInputRef.current) {
+      workspaceFileInputRef.current.value = '';
     }
   };
 
