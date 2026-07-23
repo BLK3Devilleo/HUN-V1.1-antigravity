@@ -47,16 +47,16 @@ export default async function SettingsPage() {
         {/* Header Principal Bento Box (Estilo Don Emilio) */}
         <div className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-8 shadow-sm relative overflow-hidden">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-black text-[#666666] uppercase tracking-widest flex items-center gap-1.5">
+            <span className="text-xs font-bold text-[#666666] uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-black" />
               Configuración Central NUH
             </span>
-            <span className="bg-black text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">
+            <span className="bg-black text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full">
               Multi-Tenant v2
             </span>
           </div>
 
-          <h1 className="nuh-title text-4xl sm:text-5xl font-black text-black tracking-tighter leading-none mb-3">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-black tracking-tight leading-tight mb-3">
             Ajustes & Conectividad Multi-Tenant
           </h1>
 
