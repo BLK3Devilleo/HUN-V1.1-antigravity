@@ -103,7 +103,7 @@ export default function ConversationsSidebar({
           {/* Lista de Carpetas / Publicaciones */}
           <div className="flex flex-col gap-2 overflow-y-auto max-h-[42vh] scrollbar-none pr-1">
             {displayPosts.map((post) => {
-              const isSelected = post.id === (activeConversationId || activePostId);
+              const isSelected = activeConversationId ? post.id === activeConversationId : false;
               return (
                 <div
                   key={post.id}
@@ -130,7 +130,9 @@ export default function ConversationsSidebar({
 
         {/* Botón Crear Nuevo */}
         <button
-          onClick={onNewPostClick || onBackToDashboard}
+          onClick={() => {
+            if (onNewPostClick) onNewPostClick();
+          }}
           className="w-full py-3 px-4 rounded-2xl bg-[#BFBFBF] hover:bg-[#B3B3B3] text-black text-xs font-bold transition-all active:scale-95 text-center cursor-pointer shadow-sm"
         >
           + Crear nuevo
@@ -165,7 +167,7 @@ export default function ConversationsSidebar({
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
               className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 p-2 z-50 flex flex-col gap-1"
             >
-              {PROJECTS.map((proj) => (
+              {DEFAULT_PROJECTS.map((proj) => (
                 <button
                   key={proj.id}
                   onClick={() => handleOrgChange(proj.id)}
