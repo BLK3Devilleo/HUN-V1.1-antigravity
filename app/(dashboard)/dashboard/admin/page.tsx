@@ -8,7 +8,7 @@ import AdminModerationPanel from './ModerationPanel';
 export default async function AdminPage() {
   const headerList = await headers();
   const orgId = headerList.get('x-user-org-id') ?? '';
-  const userRole = headerList.get('x-user-role') ?? 'member';
+  const userRole = headerList.get('x-user-role') || (process.env.NODE_ENV === 'development' ? 'admin' : 'member');
 
   if (userRole !== 'owner' && userRole !== 'admin' && userRole !== 'moderator') {
     return (

@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   const byodbStatus = await getByodbStatus();
   const headerList = await headers();
   const orgId = headerList.get('x-user-org-id') ?? '';
-  const userRole = headerList.get('x-user-role') ?? 'member';
+  const userRole = headerList.get('x-user-role') || (process.env.NODE_ENV === 'development' ? 'admin' : 'member');
   const userEmail = headerList.get('x-user-email') ?? '';
 
   return (
