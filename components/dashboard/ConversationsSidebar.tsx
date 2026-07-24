@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { getDashboardData, type DashboardOrg } from '@/app/actions/dashboard';
 
 export interface ConversationItem {
   id: string;
@@ -25,27 +26,27 @@ interface ConversationsSidebarProps {
 const DEFAULT_PROJECTS = [
   {
     id: 'org-1',
-    name: 'Organización número 1',
+    name: '[MOCK] Organización número 1',
     posts: [
-      { id: '1', title: 'Salvemos los árboles', active: true },
-      { id: '2', title: 'Esterilizacion de lomi...', active: false },
-      { id: '3', title: 'Técnicas de cuidado...', active: false },
-      { id: '4', title: 'Cultivos en casa fáci...', active: false },
+      { id: '1', title: '[MOCK] Salvemos los árboles', active: true },
+      { id: '2', title: '[MOCK] Esterilizacion de lomi...', active: false },
+      { id: '3', title: '[MOCK] Técnicas de cuidado...', active: false },
+      { id: '4', title: '[MOCK] Cultivos en casa fáci...', active: false },
     ],
   },
   {
     id: 'org-2',
-    name: 'Organización número 2',
+    name: '[MOCK] Organización número 2',
     posts: [
-      { id: '5', title: 'Anuncio de Producto B', active: true },
-      { id: '6', title: 'Campaña de Verano', active: false },
+      { id: '5', title: '[MOCK] Anuncio de Producto B', active: true },
+      { id: '6', title: '[MOCK] Campaña de Verano', active: false },
     ],
   },
   {
     id: 'org-3',
-    name: 'Organización número 3',
+    name: '[MOCK] Organización número 3',
     posts: [
-      { id: '7', title: 'Boletín Mensual', active: true },
+      { id: '7', title: '[MOCK] Boletín Mensual', active: true },
     ],
   },
 ];
@@ -60,6 +61,7 @@ export default function ConversationsSidebar({
   conversationsList,
   activeConversationId,
 }: ConversationsSidebarProps) {
+  const [projects, setProjects] = useState<DashboardOrg[]>(DEFAULT_MOCK_PROJECTS);
   const [currentOrgId, setCurrentOrgId] = useState(selectedOrg);
   const [activePostId, setActivePostId] = useState('1');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

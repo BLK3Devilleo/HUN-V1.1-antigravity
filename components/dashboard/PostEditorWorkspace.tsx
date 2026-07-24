@@ -232,6 +232,10 @@ export default function PostEditorWorkspace({
         return updatedList;
       });
     }
+
+    if (workspaceFileInputRef.current) {
+      workspaceFileInputRef.current.value = '';
+    }
   };
 
   // Eliminar multimedia individual del bloque activo
@@ -820,7 +824,7 @@ export default function PostEditorWorkspace({
             }}
           >
             <button
-              onClick={handleAddImage}
+              onClick={handleOpenPicker}
               style={{
                 width: '11.3021vw',
                 height: '5.6481vh',
@@ -831,6 +835,7 @@ export default function PostEditorWorkspace({
             </button>
 
             <button
+              onClick={handleOpenPicker}
               style={{
                 width: '11.3021vw',
                 height: '5.6481vh',

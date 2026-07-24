@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import SocialSidebar from '@/components/dashboard/SocialSidebar';
 import UploadQueueWidget from '@/components/dashboard/UploadQueueWidget';
@@ -24,11 +24,28 @@ export default function DashboardPage() {
   const [activeModal, setActiveModal] = useState<'org' | 'profile' | 'storage' | 'reach' | 'planner' | 'comments' | null>(null);
   const [activeConversation, setActiveConversation] = useState<{ id: string; title: string; date: string } | null>(null);
 
-  const orgNames: Record<string, string> = {
-    'org-1': 'Organización número 1',
-    'org-2': 'Organización número 2',
-    'org-3': 'Organización número 3',
-  };
+  useEffect(() => {
+    async function loadData() {
+      const { getDashboardData } = await import('@/app/actions/dashboard');
+      const data = await getDashboardData();
+      if (data.organizations && data.organizations.length > 0) {
+        const map: Record<string, string> = {};
+        data.organizations.forEach((o) => {
+          map[o.id] = o.name;
+        });
+        setOrgNames(map);
+        setSelectedOrg(data.activeOrgId || data.organizations[0].id);
+      }
+      setMetrics({
+        usedGB: data.storage.usedGB,
+        totalGB: data.storage.totalGB,
+        reachCount: data.reachCount,
+        plannerCount: data.plannerCount,
+        commentsCount: data.commentsCount,
+      });
+    }
+    loadData();
+  }, []);
 
   const [conversationsList, setConversationsList] = useState<{ id: string; title: string; active?: boolean }[]>([
     { id: '1', title: 'Salvemos los árboles' },
@@ -75,6 +92,10 @@ export default function DashboardPage() {
 
   const handleCancelSelection = () => {
     setSelectedFiles([]);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Iniciar transición al Editor
@@ -415,7 +436,7 @@ export default function DashboardPage() {
             >
               <div style={{ width: '18vw', height: '100%' }}>
                 <FolderCard title="Almacenamiento" onClick={() => setActiveModal('storage')}>
-                  <StorageBar usedGB={3500} totalGB={3688} />
+                  <StorageBar usedGB={metrics.usedGB} totalGB={metrics.totalGB} />
                 </FolderCard>
               </div>
 
@@ -423,7 +444,7 @@ export default function DashboardPage() {
                 <FolderCard title="Alcance total (mes)" onClick={() => setActiveModal('reach')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
-                      252K
+                      {metrics.reachCount >= 1000 ? `${Math.round(metrics.reachCount / 1000)}K` : metrics.reachCount}
                     </p>
                   </div>
                 </FolderCard>
@@ -433,7 +454,7 @@ export default function DashboardPage() {
                 <FolderCard title="Planificador" onClick={() => setActiveModal('planner')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
-                      8 hoy
+                      {metrics.plannerCount} hoy
                     </p>
                   </div>
                 </FolderCard>
@@ -443,9 +464,9 @@ export default function DashboardPage() {
                 <FolderCard title="Comentarios" onClick={() => setActiveModal('comments')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
-                      100
+                      {metrics.commentsCount}
                     </p>
-                    <p className="text-xs font-semibold text-[#666666] mt-1">
+                    <p className="text-xs font-semibold text-[var(--nuh-text-secondary)] mt-1">
                       Nuevos
                     </p>
                   </div>

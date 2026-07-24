@@ -72,9 +72,9 @@ body {
 .nuh-title {
   font-family: var(--font-barlow-semi-condensed), 'Barlow Semi Condensed', sans-serif;
   text-transform: uppercase;
-  line-height: 0.85;
+  line-height: 1;
   font-weight: 700;
-  letter-spacing: -0.07em;
+  letter-spacing: -0.02em;
   color: var(--nuh-text-primary);
   user-select: none;
 }

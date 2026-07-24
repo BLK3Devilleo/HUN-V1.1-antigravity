@@ -57,13 +57,13 @@ export default async function GlobalFeedPage() {
         {/* Header Principal */}
         <div className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-8 shadow-sm relative overflow-hidden">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-black text-[#666666] uppercase tracking-widest flex items-center gap-1.5">
+            <span className="text-xs font-bold text-[#666666] uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-black" />
               Red de Impacto Social NUH
             </span>
           </div>
 
-          <h1 className="nuh-title text-4xl sm:text-5xl font-black text-black tracking-tighter leading-none mb-3">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-black tracking-tight leading-tight mb-3">
             Feed Global de Causas Aprobadas
           </h1>
 
