@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SelectedMedia {
@@ -21,13 +21,9 @@ export interface ContentVariationBlock {
 interface PostEditorWorkspaceProps {
   initialMedia: SelectedMedia[];
   currentPostTitle?: string;
-  activeOrgId?: string;
+  onContentStarted?: (titleHint: string) => void;
+  activeConversationId?: string | null;
 }
-
-const DEFAULT_IMAGES = [
-  'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80',
-];
 
 const SOCIAL_PLATFORMS = [
   { id: 'facebook', name: 'Facebook' },
@@ -38,37 +34,112 @@ const SOCIAL_PLATFORMS = [
 ];
 
 export default function PostEditorWorkspace({
-  initialMedia,
-  currentPostTitle = 'Salvemos los árboles',
+  initialMedia = [],
+  currentPostTitle = 'Nueva Publicación',
+  onContentStarted,
+  activeConversationId,
 }: PostEditorWorkspaceProps) {
-  // Estado de Bloques de Variaciones de Contenido (Guardados por sesión/conversación)
-  const [variationBlocks, setVariationBlocks] = useState<ContentVariationBlock[]>([
-    {
-      id: 'variation-1',
-      number: 1,
-      caption: '',
-      selectedPlatforms: ['facebook', 'instagram'],
-      thumbnails: initialMedia.length > 0 ? initialMedia.map((m) => m.url) : DEFAULT_IMAGES,
-      activeMediaIndex: 0,
-    },
-  ]);
-  const [activeBlockId, setActiveBlockId] = useState<string>('variation-1');
+  // Función para partir multimedia en bloques: Imágenes juntas en Bloque 1, cada Video en su propio Bloque
+  const buildInitialBlocks = (): ContentVariationBlock[] => {
+    if (!initialMedia || initialMedia.length === 0) {
+      return [
+        {
+          id: 'variation-1',
+          number: 1,
+          caption: '',
+          selectedPlatforms: ['facebook', 'instagram'],
+          thumbnails: [],
+          activeMediaIndex: 0,
+        },
+      ];
+    }
+
+    const images = initialMedia.filter((f) => !f.isVideo);
+    const videos = initialMedia.filter((f) => f.isVideo);
+
+    const blocks: ContentVariationBlock[] = [];
+    let num = 1;
+
+    if (images.length > 0) {
+      blocks.push({
+        id: `variation-${num}`,
+        number: num++,
+        caption: '',
+        selectedPlatforms: ['facebook', 'instagram'],
+        thumbnails: images.map((img) => img.url),
+        activeMediaIndex: 0,
+      });
+    }
+
+    videos.forEach((vid, idx) => {
+      blocks.push({
+        id: `variation-${num}`,
+        number: num++,
+        caption: '',
+        selectedPlatforms: ['facebook', 'instagram'],
+        thumbnails: [vid.url],
+        activeMediaIndex: 0,
+      });
+    });
+
+    return blocks.length > 0
+      ? blocks
+      : [
+        {
+          id: 'variation-1',
+          number: 1,
+          caption: '',
+          selectedPlatforms: ['facebook', 'instagram'],
+          thumbnails: [],
+          activeMediaIndex: 0,
+        },
+      ];
+  };
+
+  const [variationBlocks, setVariationBlocks] = useState<ContentVariationBlock[]>(buildInitialBlocks);
+  const [activeBlockId, setActiveBlockId] = useState<string>(variationBlocks[0]?.id || 'variation-1');
   const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
 
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const workspaceFileInputRef = useRef<HTMLInputElement>(null);
   const dropdownScrollRef = useRef<HTMLDivElement>(null);
 
+  // Re-inicializar espacio de trabajo a borrador limpio sin mockups cuando activeConversationId es null o cambia initialMedia
+  useEffect(() => {
+    if (activeConversationId === null || !initialMedia || initialMedia.length === 0) {
+      setVariationBlocks([
+        {
+          id: 'variation-1',
+          number: 1,
+          caption: '',
+          selectedPlatforms: ['facebook', 'instagram'],
+          thumbnails: [],
+          activeMediaIndex: 0,
+        },
+      ]);
+      setActiveBlockId('variation-1');
+    } else if (initialMedia.length > 0) {
+      setVariationBlocks(buildInitialBlocks());
+    }
+  }, [activeConversationId, initialMedia]);
+
   // Obtener el bloque activo actual
   const activeBlock = variationBlocks.find((b) => b.id === activeBlockId) || variationBlocks[0];
-  const activeMediaUrl = activeBlock.thumbnails[activeBlock.activeMediaIndex] || DEFAULT_IMAGES[0];
-  const isVideo = activeMediaUrl.endsWith('.mp4') || activeMediaUrl.includes('video');
+  const activeMediaUrl = activeBlock?.thumbnails[activeBlock?.activeMediaIndex] || '';
+  const isVideo =
+    activeMediaUrl.endsWith('.mp4') ||
+    activeMediaUrl.endsWith('.webm') ||
+    activeMediaUrl.includes('video') ||
+    (activeMediaUrl.startsWith('blob:') && activeBlock?.thumbnails.some((url) => url === activeMediaUrl));
 
-  // Actualizar descripción del bloque activo
+  // Actualizar descripción del bloque activo y notificar creación condicional de conversación
   const handleCaptionChange = (text: string) => {
     setVariationBlocks((prev) =>
       prev.map((b) => (b.id === activeBlock.id ? { ...b, caption: text } : b))
     );
+    if (text.trim() !== '' && onContentStarted) {
+      onContentStarted(text);
+    }
   };
 
   // Toggle de redes sociales en el bloque activo
@@ -85,77 +156,81 @@ export default function PostEditorWorkspace({
     );
   };
 
-  const handleOpenPicker = () => {
-    workspaceFileInputRef.current?.click();
-  };
+  // Selector de multimedia local: Agrupa imágenes en 1 bloque y crea 1 bloque individual por cada video
+  const handleWorkspaceFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files).map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+        isVideo: file.type.startsWith('video/'),
+      }));
 
-  // Selector de multimedia local en el workspace para el bloque activo
-  const handleWorkspaceFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
+      if (onContentStarted) {
+        onContentStarted(filesArray[0]?.file?.name || 'Publicación Multimedia');
+      }
 
-    try {
-      const { saveMediaRecord } = await import('@/app/actions/media');
-      const files = Array.from(e.target.files);
-      const newUrls: string[] = [];
+      const images = filesArray.filter((f) => !f.isVideo);
+      const videos = filesArray.filter((f) => f.isVideo);
 
-      for (const file of files) {
-        const localUrl = URL.createObjectURL(file);
-        try {
-          const res = await fetch('/api/r2/presign', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fileName: file.name,
-              mimeType: file.type || 'image/jpeg',
-              fileSize: file.size,
-            }),
-          });
+      setVariationBlocks((prev) => {
+        let currentBlocks = [...prev];
+        const isCurrentEmpty = activeBlock.thumbnails.length === 0;
 
-          if (res.ok) {
-            const { url: uploadUrl, publicUrl } = await res.json();
-            const putRes = await fetch(uploadUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': file.type || 'image/jpeg' },
-              body: file,
-            });
-            if (putRes.ok) {
-              await saveMediaRecord(publicUrl, file.name);
-              newUrls.push(publicUrl);
-            } else {
-              newUrls.push(localUrl);
-            }
+        let nextNum = currentBlocks.length + 1;
+        const createdBlocks: ContentVariationBlock[] = [];
+
+        if (images.length > 0) {
+          if (isCurrentEmpty) {
+            currentBlocks = currentBlocks.map((b) =>
+              b.id === activeBlock.id
+                ? {
+                  ...b,
+                  thumbnails: images.map((img) => img.url),
+                  activeMediaIndex: 0,
+                }
+                : b
+            );
           } else {
-            newUrls.push(localUrl);
+            createdBlocks.push({
+              id: `variation-${Date.now()}-img`,
+              number: nextNum++,
+              caption: activeBlock.caption || '',
+              selectedPlatforms: [...activeBlock.selectedPlatforms],
+              thumbnails: images.map((img) => img.url),
+              activeMediaIndex: 0,
+            });
           }
-        } catch {
-          newUrls.push(localUrl);
         }
-      }
 
-      if (newUrls.length > 0) {
-        setVariationBlocks((prev) =>
-          prev.map((b) => {
-            if (b.id !== activeBlock.id) return b;
-            return {
-              ...b,
-              thumbnails: [...b.thumbnails, ...newUrls],
-              activeMediaIndex: b.thumbnails.length,
-            };
-          })
-        );
-      }
-    } catch {
-      const newUrls = Array.from(e.target.files).map((file) => URL.createObjectURL(file));
-      setVariationBlocks((prev) =>
-        prev.map((b) => {
-          if (b.id !== activeBlock.id) return b;
-          return {
-            ...b,
-            thumbnails: [...b.thumbnails, ...newUrls],
-            activeMediaIndex: b.thumbnails.length,
-          };
-        })
-      );
+        videos.forEach((vid, idx) => {
+          if (isCurrentEmpty && images.length === 0 && idx === 0) {
+            currentBlocks = currentBlocks.map((b) =>
+              b.id === activeBlock.id
+                ? {
+                  ...b,
+                  thumbnails: [vid.url],
+                  activeMediaIndex: 0,
+                }
+                : b
+            );
+          } else {
+            createdBlocks.push({
+              id: `variation-${Date.now()}-vid-${idx}`,
+              number: nextNum++,
+              caption: activeBlock.caption || '',
+              selectedPlatforms: [...activeBlock.selectedPlatforms],
+              thumbnails: [vid.url],
+              activeMediaIndex: 0,
+            });
+          }
+        });
+
+        const updatedList = [...currentBlocks, ...createdBlocks];
+        if (createdBlocks.length > 0) {
+          setActiveBlockId(createdBlocks[0].id);
+        }
+        return updatedList;
+      });
     }
 
     if (workspaceFileInputRef.current) {
@@ -173,14 +248,14 @@ export default function PostEditorWorkspace({
         const newIndex = Math.min(b.activeMediaIndex, Math.max(0, updatedThumbnails.length - 1));
         return {
           ...b,
-          thumbnails: updatedThumbnails.length > 0 ? updatedThumbnails : [DEFAULT_IMAGES[0]],
+          thumbnails: updatedThumbnails,
           activeMediaIndex: newIndex,
         };
       })
     );
   };
 
-  // Crear un nuevo Bloque de Variación de Contenido (+)
+  // Crear un nuevo Bloque de Variación de Contenido vacío (+)
   const handleAddVariationBlock = () => {
     const nextNumber = variationBlocks.length + 1;
     const newBlock: ContentVariationBlock = {
@@ -188,7 +263,7 @@ export default function PostEditorWorkspace({
       number: nextNumber,
       caption: '',
       selectedPlatforms: ['facebook'],
-      thumbnails: [...activeBlock.thumbnails],
+      thumbnails: [],
       activeMediaIndex: 0,
     };
     setVariationBlocks((prev) => [...prev, newBlock]);
@@ -231,12 +306,12 @@ export default function PostEditorWorkspace({
       prev.map((b) =>
         b.id === activeBlock.id
           ? {
-              ...b,
-              activeMediaIndex: Math.min(
-                b.thumbnails.length - 1,
-                b.activeMediaIndex + 1
-              ),
-            }
+            ...b,
+            activeMediaIndex: Math.min(
+              b.thumbnails.length - 1,
+              b.activeMediaIndex + 1
+            ),
+          }
           : b
       )
     );
@@ -258,7 +333,7 @@ export default function PostEditorWorkspace({
   let rangeStart: number | null = null;
 
   SOCIAL_PLATFORMS.forEach((plat, idx) => {
-    const isSelected = activeBlock.selectedPlatforms.includes(plat.id);
+    const isSelected = activeBlock?.selectedPlatforms.includes(plat.id);
     if (isSelected) {
       if (rangeStart === null) rangeStart = idx;
     } else {
@@ -270,6 +345,64 @@ export default function PostEditorWorkspace({
   });
   if (rangeStart !== null) {
     selectionRanges.push({ start: rangeStart, end: SOCIAL_PLATFORMS.length - 1 });
+  }
+
+  const hasMediaInActiveBlock = activeBlock && activeBlock.thumbnails && activeBlock.thumbnails.length > 0;
+  const isMinimalView = !hasMediaInActiveBlock;
+
+  // VISTA INICIAL MINIMALISTA (RÉPLICA EXACTA 1:1 DE LA IMAGEN 2 ADJUNTADA POR EL USUARIO)
+  if (isMinimalView) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full w-full select-none relative gap-8 my-auto">
+        {/* Input oculto de archivos para el botón + Círculo */}
+        <input
+          type="file"
+          ref={workspaceFileInputRef}
+          onChange={handleWorkspaceFileSelect}
+          multiple
+          accept="image/*,video/*"
+          className="hidden"
+        />
+
+        {/* TÍTULO SUPERIOR SIMPLIFICADO: "Comparte algo nuevo hoy" */}
+        <motion.h2
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-2xl font-bold text-[#555555] tracking-tight text-center"
+        >
+          Comparte algo nuevo hoy
+        </motion.h2>
+
+        {/* CONTENEDOR DE BARRA EN FORMA DE PÍLDORA (RÉPLICA EXACTA DE LA IMAGEN 2) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-[56.8229vw] bg-[#E5E5E5]/80 backdrop-blur-sm border-2 border-[#888888]/40 rounded-full p-2 flex items-center gap-3 shadow-sm"
+        >
+          {/* Círculo oscuro con ícono + grande a la izquierda */}
+          <button
+            onClick={handleAddImage}
+            className="w-14 h-14 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 flex-shrink-0 cursor-pointer shadow-md"
+            title="Añadir multimedia (Imágenes o Videos)"
+          >
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+
+          {/* Campo de entrada de texto interno redondeado */}
+          <div className="flex-1 h-14 bg-white border border-black/20 rounded-full px-6 flex items-center shadow-inner">
+            <input
+              type="text"
+              value={activeBlock.caption}
+              onChange={(e) => handleCaptionChange(e.target.value)}
+              placeholder="Escribe la descripción de la publicación..."
+              className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic"
+            />
+          </div>
+        </motion.div>
+      </div>
+    );
   }
 
   return (
@@ -289,16 +422,16 @@ export default function PostEditorWorkspace({
         <h2 className="text-sm font-bold text-black tracking-tight text-center">
           {currentPostTitle}
         </h2>
-        <span className="text-[11px] font-black bg-black text-white px-2 py-0.5 rounded-full">
+        <span className="text-[11px] font-black bg-black text-white px-2.5 py-0.5 rounded-full">
           Variación {activeBlock.number}
         </span>
       </div>
 
       {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) x 398px (36.8519vh) CENTRADO */}
       <div className="relative w-full flex items-center justify-center">
-        {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO (IMAGEN + DOTS + DESCRIPCIÓN) - 1091px x 398px */}
+        {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO */}
         <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3.5 items-center justify-between w-[56.8229vw] h-[36.8519vh]">
-          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN Y PUNTOS DE PAGINACIÓN */}
+          {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN O VIDEO */}
           <div
             className="flex flex-col items-center justify-between h-full"
             style={{
@@ -306,7 +439,6 @@ export default function PostEditorWorkspace({
               marginLeft: '1.3749%',
             }}
           >
-            {/* CONTENEDOR DE LA IMAGEN (336px x 336px) - SIEMPRE CUADRADO */}
             <div
               className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group"
               style={{
@@ -339,11 +471,10 @@ export default function PostEditorWorkspace({
                 (_, idx) => (
                   <span
                     key={idx}
-                    className={`rounded-full transition-all ${
-                      idx === activeBlock.activeMediaIndex
+                    className={`rounded-full transition-all ${idx === activeBlock.activeMediaIndex
                         ? 'w-2 h-2 bg-[#555555]'
                         : 'w-1.5 h-1.5 bg-[#BBBBBB]'
-                    }`}
+                      }`}
                   />
                 )
               )}
@@ -380,7 +511,7 @@ export default function PostEditorWorkspace({
         >
           {/* CONTENEDOR RELATIVO DEL BOTÓN CÍRCULO DESPLEGABLE */}
           <div className="relative">
-            {/* Círculo superior chevron down - Mantenido por ENCIMA de la píldora (z-30) */}
+            {/* Círculo superior chevron down */}
             <button
               onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
               style={{
@@ -405,7 +536,7 @@ export default function PostEditorWorkspace({
               </svg>
             </button>
 
-            {/* PÍLDORA HORIZONTAL DESPLEGABLE DE BLOQUES NUMERADOS (1, 2, 3...) + BOTÓN + AÑADIR NUEVA VARIACIÓN */}
+            {/* PÍLDORA HORIZONTAL DESPLEGABLE DE BLOQUES NUMERADOS (1, 2, 3...) */}
             <AnimatePresence>
               {isSocialDropdownOpen && (
                 <motion.div
@@ -414,10 +545,9 @@ export default function PostEditorWorkspace({
                   exit={{ opacity: 0, scale: 0.9, x: -10 }}
                   className="absolute left-0 top-0 z-10 flex items-center pointer-events-auto"
                   style={{
-                    gap: '0.5208vw', // 10px entre la píldora de 277px y el círculo + a su derecha
+                    gap: '0.5208vw',
                   }}
                 >
-                  {/* Píldora horizontal de 277px x 86px fijada a la izquierda (Alto 4.4792vw igual al círculo activador) */}
                   <div
                     style={{
                       width: '14.4271vw',
@@ -425,7 +555,6 @@ export default function PostEditorWorkspace({
                     }}
                     className="bg-[#D9D9D9]/95 backdrop-blur-md border border-black/10 rounded-full flex items-center relative overflow-hidden shadow-xl"
                   >
-                    {/* Contenedor scrolleable con padding inicial de 94px (33.9350% de 277px) y CÍRCULOS NUMERADOS (1, 2, 3...) */}
                     <div
                       ref={dropdownScrollRef}
                       className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth"
@@ -445,11 +574,10 @@ export default function PostEditorWorkspace({
                               width: '35%',
                               aspectRatio: '1 / 1',
                             }}
-                            className={`relative group rounded-full flex items-center justify-center font-black text-base transition-all flex-shrink-0 cursor-pointer ${
-                              isCurrentActive
+                            className={`relative group rounded-full flex items-center justify-center font-black text-base transition-all flex-shrink-0 cursor-pointer ${isCurrentActive
                                 ? 'bg-black text-white scale-105 shadow-md border-2 border-black'
                                 : 'bg-white text-black border border-black/20 hover:border-black'
-                            }`}
+                              }`}
                             title={`Variación de Contenido #${block.number}`}
                           >
                             <span>{block.number}</span>
@@ -468,7 +596,6 @@ export default function PostEditorWorkspace({
                     </div>
                   </div>
 
-                  {/* Flechas de navegación DEBAJO de la píldora si hay más de 2 variaciones */}
                   {variationBlocks.length > 2 && (
                     <div className="absolute top-[calc(100%+6px)] left-0 w-[14.4271vw] flex items-center justify-center gap-5 text-[#666666] z-20 pointer-events-auto">
                       <button
@@ -494,7 +621,6 @@ export default function PostEditorWorkspace({
                     </div>
                   )}
 
-                  {/* Círculo + Añadir nueva Variación de Contenido */}
                   <button
                     onClick={handleAddVariationBlock}
                     style={{
@@ -522,12 +648,11 @@ export default function PostEditorWorkspace({
             }}
             className="bg-[#D9D9D9] rounded-full border border-black/10 relative overflow-hidden"
           >
-            {/* FONDO NEGRO UNIFICADO PARA RANGOS DE SELECCIÓN DE LA VARIACIÓN ACTIVA */}
             {selectionRanges.map((range) => {
               const isSingle = range.start === range.end;
               const yStartCenterPx = 42.5 + range.start * 62.25;
               const yEndCenterPx = 42.5 + range.end * 62.25;
-              
+
               const yTopPx = yStartCenterPx - 32.5;
               const yBottomPx = yEndCenterPx + 32.5;
               const heightPx = yBottomPx - yTopPx;
@@ -576,9 +701,8 @@ export default function PostEditorWorkspace({
               }
             })}
 
-            {/* ÍCONOS DE REDES SOCIALES PARA LA VARIACIÓN ACTIVA */}
             {SOCIAL_PLATFORMS.map((plat, idx) => {
-              const isSel = activeBlock.selectedPlatforms.includes(plat.id);
+              const isSel = activeBlock?.selectedPlatforms.includes(plat.id);
               const yCenterPx = 42.5 + idx * 62.25;
               const topPercent = (yCenterPx / 334) * 100;
 
@@ -594,9 +718,8 @@ export default function PostEditorWorkspace({
                   title={plat.name}
                 >
                   <div
-                    className={`flex items-center justify-center transition-colors ${
-                      isSel ? 'text-white font-bold' : 'text-[#666666] hover:text-[#333333] font-semibold'
-                    }`}
+                    className={`flex items-center justify-center transition-colors ${isSel ? 'text-white font-bold' : 'text-[#666666] hover:text-[#333333] font-semibold'
+                      }`}
                   >
                     {plat.id === 'facebook' && (
                       <span className="text-xl font-black font-sans leading-none">f</span>
@@ -656,21 +779,24 @@ export default function PostEditorWorkspace({
                       width: '13.0072%',
                       aspectRatio: '1 / 1',
                     }}
-                    className={`relative group rounded-2xl overflow-hidden cursor-pointer transition-all flex-shrink-0 flex items-center justify-center ${
-                      thumbUrl
+                    className={`relative group rounded-2xl overflow-hidden cursor-pointer transition-all flex-shrink-0 flex items-center justify-center ${thumbUrl
                         ? isActive
                           ? 'border-2 border-black scale-105'
                           : 'border border-black/20 hover:border-black'
                         : 'border-2 border-[#888888]/40 bg-white'
-                    }`}
+                      }`}
                   >
                     {thumbUrl ? (
                       <>
-                        <img
-                          src={thumbUrl}
-                          alt={`thumb-${idx}`}
-                          className="w-full h-full object-cover"
-                        />
+                        {thumbUrl.endsWith('.mp4') || thumbUrl.includes('video') ? (
+                          <video src={thumbUrl} className="w-full h-full object-cover" />
+                        ) : (
+                          <img
+                            src={thumbUrl}
+                            alt={`thumb-${idx}`}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                         {activeBlock.thumbnails.length > 1 && (
                           <button
                             onClick={(e) => handleRemoveMediaFromActiveBlock(idx, e)}
