@@ -141,9 +141,23 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         </div>
       </motion.div>
 
-      {/* BOTONES DE NAVEGACIÓN Y UTILIDADES */}
-      <div className={`flex flex-wrap gap-[2cqw] w-full h-[25%] items-center ${expanded ? 'justify-start px-2' : 'justify-center'}`}>
+      {/* BOTONES DE NAVEGACIÓN Y UTILIDADES — columna vertical para contenedor estrecho (5.2vw) */}
+      <div
+        className={`flex flex-col w-full h-[25%] items-center justify-around ${
+          expanded ? 'items-start px-2' : 'items-center'
+        }`}
+      >
         {UTILS.map((u) => {
+          const btnStyle = {
+            width: 'min(80cqw, 14cqh)',
+            height: 'min(80cqw, 14cqh)',
+            background: u.color,
+            willChange: 'transform, opacity',
+            flexShrink: 0,
+          };
+          const btnClass =
+            'aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20';
+
           if (u.href) {
             return (
               <Link key={u.id} href={u.href} className="block">
@@ -154,12 +168,8 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
                     scale: isTransitioning ? 1.2 : 1,
                   }}
                   transition={sidebarTransition}
-                  className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20"
-                  style={{
-                    width: 'min(80cqw, 22cqh)',
-                    background: u.color,
-                    willChange: 'transform, opacity',
-                  }}
+                  className={btnClass}
+                  style={btnStyle}
                   title={u.label}
                 >
                   {renderIcon(u.id)}
@@ -178,12 +188,8 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
                 scale: isTransitioning ? 1.2 : 1,
               }}
               transition={sidebarTransition}
-              className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20"
-              style={{
-                width: 'min(80cqw, 22cqh)',
-                background: u.color,
-                willChange: 'transform, opacity',
-              }}
+              className={btnClass}
+              style={btnStyle}
               title={u.label}
             >
               {renderIcon(u.id)}
