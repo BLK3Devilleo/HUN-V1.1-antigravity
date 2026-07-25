@@ -3,9 +3,9 @@ import crypto from 'crypto';
 const IV_LENGTH = 16;
 
 function getEncryptionKeyBuffer(): Buffer {
-  const key = process.env.BYODB_ENCRYPTION_KEY;
+  const key = process.env.BYODB_ENCRYPTION_KEY || process.env.ENCRYPTION_SECRET;
   if (!key) {
-    throw new Error('BYODB_ENCRYPTION_KEY no está configurada en las variables de entorno.');
+    throw new Error('BYODB_ENCRYPTION_KEY o ENCRYPTION_SECRET no está configurada en las variables de entorno.');
   }
 
   // Si la clave tiene 64 caracteres hex, se decodifica como 32 bytes binarios
