@@ -52,7 +52,8 @@ export default async function AdminPage() {
     .from('causes')
     .select('id, title, description, media_url, created_at, status')
     .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100); // ✅ FIX W-4: prevent unlimited fetch on large orgs
 
   return (
     <div className="min-h-screen bg-[#F2F2F2] text-black p-4 sm:p-6 md:p-10 font-sans">

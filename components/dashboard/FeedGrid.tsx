@@ -77,14 +77,24 @@ export default function FeedGrid({ causes }: { causes: FeedCause[] }) {
                   playsInline
                   autoPlay
                 />
-              ) : (
+              ) : cause.media_url ? (
                 <Image
-                  src={cause.media_url || '/placeholder.png'}
+                  src={cause.media_url}
                   alt={cause.title}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                   unoptimized
                 />
+              ) : (
+                /* ✅ FIX C-2: inline fallback — no external file needed */
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black/5">
+                  <svg viewBox="0 0 24 24" className="w-10 h-10 text-black/20" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="M3 15l5-5 4 4 3-3 4 4" />
+                    <circle cx="8.5" cy="9.5" r="1.5" />
+                  </svg>
+                  <span className="text-[10px] font-bold text-black/30 uppercase tracking-wider">Sin imagen</span>
+                </div>
               )}
 
               {/* Badge de Organización */}

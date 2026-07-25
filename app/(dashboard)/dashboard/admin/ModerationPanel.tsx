@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { moderateCause } from '@/app/actions/moderation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Check, X, Clock, Layers, Filter, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, X, Clock, Layers, Filter, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 interface Cause {
   id: string;
@@ -20,9 +20,11 @@ export default function AdminModerationPanel({ initialCauses }: { initialCauses:
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<{ [key: string]: string }>({});
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [actionError, setActionError] = useState<string | null>(null); // ✅ FIX W-5: replace alert()
 
   const handleModerate = async (causeId: string, decision: 'approved' | 'rejected') => {
     setProcessingId(causeId);
+    setActionError(null);
     const reason = rejectionReason[causeId] || '';
     
     const result = await moderateCause(causeId, decision, reason);
@@ -32,7 +34,8 @@ export default function AdminModerationPanel({ initialCauses }: { initialCauses:
         prev.map((c) => (c.id === causeId ? { ...c, status: decision } : c))
       );
     } else {
-      alert(`Error al moderar: ${result.error}`);
+      // ✅ FIX W-5: inline error state instead of blocking alert()
+      setActionError(result.error || 'Error desconocido al moderar.');
     }
     setProcessingId(null);
   };
@@ -85,6 +88,27 @@ export default function AdminModerationPanel({ initialCauses }: { initialCauses:
           </button>
         ))}
       </div>
+
+      {/* ✅ FIX W-5: Error banner inline — no alert() */}
+      {actionError && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-900 rounded-[20px] p-4 shadow-sm"
+        >
+          <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs font-bold leading-relaxed">{actionError}</p>
+          </div>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-rose-400 hover:text-rose-700 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
 
       {/* Grid de Contenidos Animado */}
       {filteredCauses.length === 0 ? (
