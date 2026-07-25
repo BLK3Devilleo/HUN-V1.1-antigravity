@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import SocialSidebar from '@/components/dashboard/SocialSidebar';
 import UploadQueueWidget from '@/components/dashboard/UploadQueueWidget';
@@ -8,7 +8,7 @@ import FolderCard from '@/components/dashboard/FolderCard';
 import ContentStack from '@/components/dashboard/ContentStack';
 import StorageBar from '@/components/dashboard/StorageBar';
 import ConversationsSidebar from '@/components/dashboard/ConversationsSidebar';
-import PostEditorWorkspace from '@/components/dashboard/PostEditorWorkspace';
+import PostEditorWorkspace, { type ProjectDraft } from '@/components/dashboard/PostEditorWorkspace';
 
 interface SelectedMedia {
   file: File;
@@ -16,13 +16,84 @@ interface SelectedMedia {
   isVideo: boolean;
 }
 
+const INITIAL_PROJECTS: ProjectDraft[] = [
+  {
+    id: '1',
+    title: 'Salvemos los árboles',
+    variationBlocks: [
+      {
+        id: 'var-1',
+        number: 1,
+        caption: 'Unámonos para proteger nuestros bosques y garantizar un futuro verde para las próximas generaciones. 🌳🌲',
+        selectedPlatforms: ['facebook', 'instagram', 'x'],
+        thumbnails: [
+          'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80',
+        ],
+        activeMediaIndex: 0,
+        isVideoBlock: false,
+      },
+    ],
+    activeBlockId: 'var-1',
+  },
+  {
+    id: '2',
+    title: 'Esterilizacion de lomi...',
+    variationBlocks: [
+      {
+        id: 'var-1',
+        number: 1,
+        caption: 'Jornada de esterilización gratuita para lomitos y michis este fin de semana. ¡Aparta tu lugar! 🐾🐶🐱',
+        selectedPlatforms: ['facebook', 'instagram'],
+        thumbnails: [
+          'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80',
+        ],
+        activeMediaIndex: 0,
+        isVideoBlock: false,
+      },
+    ],
+    activeBlockId: 'var-1',
+  },
+  {
+    id: '3',
+    title: 'Técnicas de cuidado...',
+    variationBlocks: [
+      {
+        id: 'var-1',
+        number: 1,
+        caption: 'Aprende las mejores técnicas de cuidado de plantas en el hogar. 🌿🪴',
+        selectedPlatforms: ['instagram', 'tiktok'],
+        thumbnails: [],
+        activeMediaIndex: 0,
+        isVideoBlock: false,
+      },
+    ],
+    activeBlockId: 'var-1',
+  },
+  {
+    id: '4',
+    title: 'Cultivos en casa fáci...',
+    variationBlocks: [
+      {
+        id: 'var-1',
+        number: 1,
+        caption: 'Guía paso a paso para cultivar tus propios alimentos orgánicos en casa. 🥬🍓',
+        selectedPlatforms: ['facebook', 'linkedin'],
+        thumbnails: [],
+        activeMediaIndex: 0,
+        isVideoBlock: false,
+      },
+    ],
+    activeBlockId: 'var-1',
+  },
+];
+
 export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<SelectedMedia[]>([]);
-  const [isEditorActive, setIsEditorActive] = useState(false);
+  const [isEditorActive, setIsEditorActive] = useState(true);
   const [selectedOrg, setSelectedOrg] = useState('org-1');
   const [activeModal, setActiveModal] = useState<'org' | 'profile' | 'storage' | 'reach' | 'planner' | 'comments' | null>(null);
-  const [activeConversation, setActiveConversation] = useState<{ id: string; title: string; date: string } | null>(null);
 
   const orgNames: Record<string, string> = {
     'org-1': 'Organización número 1',
@@ -30,13 +101,8 @@ export default function DashboardPage() {
     'org-3': 'Organización número 3',
   };
 
-  const [conversationsList, setConversationsList] = useState<{ id: string; title: string; active?: boolean }[]>([
-    { id: '1', title: 'Salvemos los árboles' },
-    { id: '2', title: 'Esterilizacion de lomi...' },
-    { id: '3', title: 'Técnicas de cuidado...' },
-    { id: '4', title: 'Cultivos en casa fáci...' },
-  ]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [projectsList, setProjectsList] = useState<ProjectDraft[]>(INITIAL_PROJECTS);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 
   // Selector de multimedia al hacer clic en "Crear"
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,24 +116,94 @@ export default function DashboardPage() {
     }
   };
 
-  // Abrir vista desde 0 al hacer clic en "Crear" o "+ Crear nuevo"
-  const handleNewPostClick = () => {
+  // Abrir borrador limpio al hacer clic en "Crear" o "+ Crear nuevo"
+  const handleNewProjectClick = () => {
     setSelectedFiles([]);
-    setActiveConversationId(null);
+    setActiveProjectId(null);
     setIsEditorActive(true);
   };
 
-  const handleCrearClick = handleNewPostClick;
+  const handleCrearClick = handleNewProjectClick;
 
-  // Crear una nueva conversación en el menú izquierdo solo al escribir o añadir media
-  const handleContentStarted = (titleHint: string) => {
-    if (!activeConversationId) {
-      const newId = `conv-${Date.now()}`;
+  // Seleccionar un proyecto de la lista izquierda
+  const handleSelectProject = (projectItem: { id: string; title: string }) => {
+    setActiveProjectId(projectItem.id);
+    setIsEditorActive(true);
+  };
+
+  // Guardar estado actualizado de un proyecto (bloques, multimedia, redes, textos)
+  const handleSaveProject = useCallback((updatedProject: ProjectDraft) => {
+    setProjectsList((prev) => {
+      const existing = prev.find((p) => p.id === updatedProject.id);
+      if (existing) {
+        const isTitleSame = existing.title === updatedProject.title;
+        const isActiveBlockSame = existing.activeBlockId === updatedProject.activeBlockId;
+        const isBlocksSame = JSON.stringify(existing.variationBlocks) === JSON.stringify(updatedProject.variationBlocks);
+
+        if (isTitleSame && isActiveBlockSame && isBlocksSame) {
+          return prev;
+        }
+
+        return prev.map((p) => (p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
+      } else {
+        return [{ ...updatedProject }, ...prev];
+      }
+    });
+  }, []);
+
+  // Eliminar un proyecto del menú izquierdo
+  const handleDeleteProject = (projectId: string) => {
+    setProjectsList((prev) => {
+      const filtered = prev.filter((p) => p.id !== projectId);
+      if (activeProjectId === projectId) {
+        if (filtered.length > 0) {
+          setActiveProjectId(filtered[0].id);
+        } else {
+          setActiveProjectId(null);
+        }
+      }
+      return filtered;
+    });
+  };
+
+  // Crear un nuevo proyecto en el menú izquierdo solo al escribir o añadir multimedia
+  const handleContentStartedForProject = (titleHint: string) => {
+    if (!activeProjectId) {
+      const newId = `proj-${Date.now()}`;
       const title = titleHint.trim() ? titleHint.slice(0, 22) : 'Nueva Publicación';
-      setConversationsList((prev) => [{ id: newId, title }, ...prev]);
-      setActiveConversationId(newId);
+      const newProject: ProjectDraft = {
+        id: newId,
+        title,
+        variationBlocks: [
+          {
+            id: 'variation-1',
+            number: 1,
+            caption: titleHint !== 'Nueva Publicación' ? titleHint : '',
+            selectedPlatforms: ['facebook', 'instagram'],
+            thumbnails: [],
+            activeMediaIndex: 0,
+            isVideoBlock: false,
+          },
+        ],
+        activeBlockId: 'variation-1',
+      };
+      setProjectsList((prev) => [newProject, ...prev]);
+      setActiveProjectId(newId);
     }
   };
+
+  const handleTitleChange = (newTitle: string) => {
+    if (activeProjectId) {
+      setProjectsList((prev) =>
+        prev.map((p) => (p.id === activeProjectId ? { ...p, title: newTitle } : p))
+      );
+    } else {
+      handleContentStartedForProject(newTitle);
+    }
+  };
+
+  const activeProjectDraft = projectsList.find((p) => p.id === activeProjectId);
+  const currentPostTitle = activeProjectDraft?.title || 'Nueva Publicación';
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
@@ -480,13 +616,13 @@ export default function DashboardPage() {
                 onBackToDashboard={handleBackToDashboard}
                 selectedOrg={selectedOrg}
                 onSelectOrg={setSelectedOrg}
-                onSelectConversation={(item) => {
-                  setActiveConversation(item);
-                  setActiveConversationId(item.id);
+                onSelectProject={(item) => {
+                  handleSelectProject(item);
                 }}
-                onNewPostClick={handleNewPostClick}
-                conversationsList={conversationsList}
-                activeConversationId={activeConversationId}
+                onDeleteProject={handleDeleteProject}
+                onNewProjectClick={handleNewProjectClick}
+                projectsList={projectsList}
+                activeProjectId={activeProjectId}
               />
             </motion.div>
 
@@ -512,8 +648,12 @@ export default function DashboardPage() {
               >
                 <PostEditorWorkspace
                   initialMedia={selectedFiles}
-                  onContentStarted={handleContentStarted}
-                  activeConversationId={activeConversationId}
+                  currentPostTitle={currentPostTitle}
+                  onContentStarted={handleContentStartedForProject}
+                  onTitleChange={handleTitleChange}
+                  activeProjectId={activeProjectId}
+                  projectDraft={activeProjectDraft}
+                  onSaveProjectState={handleSaveProject}
                 />
               </motion.div>
             </div>

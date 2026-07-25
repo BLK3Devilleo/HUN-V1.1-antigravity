@@ -15,14 +15,28 @@ export interface ContentVariationBlock {
   caption: string;
   selectedPlatforms: string[];
   thumbnails: string[];
+  fileNames?: string[];
   activeMediaIndex: number;
+  isVideoBlock?: boolean;
+}
+
+export interface ProjectDraft {
+  id: string;
+  title: string;
+  variationBlocks: ContentVariationBlock[];
+  activeBlockId?: string;
+  updatedAt?: number;
 }
 
 interface PostEditorWorkspaceProps {
-  initialMedia: SelectedMedia[];
+  initialMedia?: SelectedMedia[];
   currentPostTitle?: string;
   onContentStarted?: (titleHint: string) => void;
+  onTitleChange?: (newTitle: string) => void;
+  activeProjectId?: string | null;
   activeConversationId?: string | null;
+  projectDraft?: ProjectDraft;
+  onSaveProjectState?: (updatedProject: ProjectDraft) => void;
 }
 
 const SOCIAL_PLATFORMS = [
@@ -33,14 +47,56 @@ const SOCIAL_PLATFORMS = [
   { id: 'tiktok', name: 'TikTok' },
 ];
 
+// Helper para extraer un nombre de archivo limpio de una URL / Blob / Ruta
+const getFileNameFromUrl = (url: string): string => {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname;
+    return pathname.split('/').pop() || url;
+  } catch {
+    return url.split('/').pop() || url;
+  }
+};
+
+// Obtener los identificadores reales de archivo de un bloque
+const getBlockFileIdentifiers = (block: ContentVariationBlock): string[] => {
+  if (block.fileNames && block.fileNames.length === block.thumbnails.length && block.fileNames.length > 0) {
+    return block.fileNames;
+  }
+  return block.thumbnails.map(getFileNameFromUrl);
+};
+
+// Helper para comparar si dos bloques de variación contienen exactamente los MISMOS NOMBRES DE ARCHIVO
+const areMediaSetsEqual = (blockA: ContentVariationBlock, blockB: ContentVariationBlock) => {
+  if (!blockA || !blockB) return false;
+  if (blockA.thumbnails.length === 0 || blockB.thumbnails.length === 0) return false;
+  if (blockA.thumbnails.length !== blockB.thumbnails.length) return false;
+
+  const namesA = getBlockFileIdentifiers(blockA).sort();
+  const namesB = getBlockFileIdentifiers(blockB).sort();
+
+  return namesA.every((val, index) => val === namesB[index]);
+};
+
 export default function PostEditorWorkspace({
   initialMedia = [],
   currentPostTitle = 'Nueva Publicación',
   onContentStarted,
+  onTitleChange,
+  activeProjectId,
   activeConversationId,
+  projectDraft,
+  onSaveProjectState,
 }: PostEditorWorkspaceProps) {
+  const currentActiveProjectId = activeProjectId !== undefined ? activeProjectId : activeConversationId;
+
   // Función para partir multimedia en bloques: Imágenes juntas en Bloque 1, cada Video en su propio Bloque
   const buildInitialBlocks = (): ContentVariationBlock[] => {
+    if (projectDraft && projectDraft.variationBlocks && projectDraft.variationBlocks.length > 0) {
+      return projectDraft.variationBlocks;
+    }
+
     if (!initialMedia || initialMedia.length === 0) {
       return [
         {
@@ -49,7 +105,9 @@ export default function PostEditorWorkspace({
           caption: '',
           selectedPlatforms: ['facebook', 'instagram'],
           thumbnails: [],
+          fileNames: [],
           activeMediaIndex: 0,
+          isVideoBlock: false,
         },
       ];
     }
@@ -60,6 +118,7 @@ export default function PostEditorWorkspace({
     const blocks: ContentVariationBlock[] = [];
     let num = 1;
 
+    // Todas las imágenes se agrupan en un único bloque inicial de carrusel/imágenes
     if (images.length > 0) {
       blocks.push({
         id: `variation-${num}`,
@@ -67,18 +126,23 @@ export default function PostEditorWorkspace({
         caption: '',
         selectedPlatforms: ['facebook', 'instagram'],
         thumbnails: images.map((img) => img.url),
+        fileNames: images.map((img) => img.file?.name || getFileNameFromUrl(img.url)),
         activeMediaIndex: 0,
+        isVideoBlock: false,
       });
     }
 
-    videos.forEach((vid, idx) => {
+    // Cada video detectado genera su propio bloque de variación individual
+    videos.forEach((vid) => {
       blocks.push({
         id: `variation-${num}`,
         number: num++,
         caption: '',
         selectedPlatforms: ['facebook', 'instagram'],
         thumbnails: [vid.url],
+        fileNames: [vid.file?.name || getFileNameFromUrl(vid.url)],
         activeMediaIndex: 0,
+        isVideoBlock: true,
       });
     });
 
@@ -91,59 +155,170 @@ export default function PostEditorWorkspace({
           caption: '',
           selectedPlatforms: ['facebook', 'instagram'],
           thumbnails: [],
+          fileNames: [],
           activeMediaIndex: 0,
+          isVideoBlock: false,
         },
       ];
   };
 
   const [variationBlocks, setVariationBlocks] = useState<ContentVariationBlock[]>(buildInitialBlocks);
-  const [activeBlockId, setActiveBlockId] = useState<string>(variationBlocks[0]?.id || 'variation-1');
-  const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
+  const [activeBlockId, setActiveBlockId] = useState<string>('variation-1');
+  const [postTitle, setPostTitle] = useState<string>(currentPostTitle);
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+  const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState<boolean>(false);
 
-  const thumbnailScrollRef = useRef<HTMLDivElement>(null);
+  const activeBlock =
+    variationBlocks.find((b) => b.id === activeBlockId) ||
+    variationBlocks[0] || {
+      id: 'variation-1',
+      number: 1,
+      caption: '',
+      selectedPlatforms: [],
+      thumbnails: [],
+      fileNames: [],
+      activeMediaIndex: 0,
+      isVideoBlock: false,
+    };
+
   const workspaceFileInputRef = useRef<HTMLInputElement>(null);
   const dropdownScrollRef = useRef<HTMLDivElement>(null);
+  const thumbnailScrollRef = useRef<HTMLDivElement>(null);
 
-  // Re-inicializar espacio de trabajo a borrador limpio sin mockups cuando activeConversationId es null o cambia initialMedia
+  const loadedProjectIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (activeConversationId === null || !initialMedia || initialMedia.length === 0) {
-      setVariationBlocks([
-        {
-          id: 'variation-1',
-          number: 1,
-          caption: '',
-          selectedPlatforms: ['facebook', 'instagram'],
-          thumbnails: [],
-          activeMediaIndex: 0,
-        },
-      ]);
-      setActiveBlockId('variation-1');
-    } else if (initialMedia.length > 0) {
-      setVariationBlocks(buildInitialBlocks());
+    if (loadedProjectIdRef.current !== currentActiveProjectId) {
+      const isNewProjectCreation = loadedProjectIdRef.current === null && currentActiveProjectId !== null;
+      loadedProjectIdRef.current = currentActiveProjectId || null;
+
+      // Si estamos pasando de borrador (null) a un proyecto recién asignado y ya tenemos multimedia/contenido local en PostEditorWorkspace,
+      // no lo sobrescribimos con el projectDraft recién creado en blanco de page.tsx.
+      // En su lugar, sincronizamos inmediatamente nuestro estado local con el padre.
+      if (isNewProjectCreation && variationBlocks.some((b) => b.thumbnails.length > 0 || b.caption.trim() !== '')) {
+        if (currentActiveProjectId && onSaveProjectState) {
+          onSaveProjectState({
+            id: currentActiveProjectId,
+            title: postTitle,
+            variationBlocks,
+            activeBlockId,
+            updatedAt: Date.now(),
+          });
+        }
+        return;
+      }
+
+      if (currentActiveProjectId === null) {
+        setVariationBlocks([
+          {
+            id: 'variation-1',
+            number: 1,
+            caption: '',
+            selectedPlatforms: ['facebook', 'instagram'],
+            thumbnails: [],
+            fileNames: [],
+            activeMediaIndex: 0,
+            isVideoBlock: false,
+          },
+        ]);
+        setActiveBlockId('variation-1');
+        setPostTitle('Nueva Publicación');
+      } else if (projectDraft && projectDraft.variationBlocks && projectDraft.variationBlocks.length > 0) {
+        setVariationBlocks(projectDraft.variationBlocks);
+        setActiveBlockId(projectDraft.activeBlockId || projectDraft.variationBlocks[0]?.id || 'variation-1');
+        setPostTitle(projectDraft.title || currentPostTitle);
+      } else if (currentActiveProjectId) {
+        const initial = buildInitialBlocks();
+        setVariationBlocks(initial);
+        setActiveBlockId(initial[0]?.id || 'variation-1');
+        setPostTitle(currentPostTitle);
+      }
     }
-  }, [activeConversationId, initialMedia]);
+  }, [currentActiveProjectId, projectDraft, currentPostTitle]);
 
-  // Obtener el bloque activo actual
-  const activeBlock = variationBlocks.find((b) => b.id === activeBlockId) || variationBlocks[0];
-  const activeMediaUrl = activeBlock?.thumbnails[activeBlock?.activeMediaIndex] || '';
-  const isVideo =
-    activeMediaUrl.endsWith('.mp4') ||
-    activeMediaUrl.endsWith('.webm') ||
-    activeMediaUrl.includes('video') ||
-    (activeMediaUrl.startsWith('blob:') && activeBlock?.thumbnails.some((url) => url === activeMediaUrl));
+  const lastSavedStateRef = useRef<string>('');
 
-  // Actualizar descripción del bloque activo y notificar creación condicional de conversación
+  useEffect(() => {
+    if (currentActiveProjectId && onSaveProjectState) {
+      const payloadString = JSON.stringify({
+        id: currentActiveProjectId,
+        title: postTitle,
+        variationBlocks,
+        activeBlockId,
+      });
+
+      if (lastSavedStateRef.current !== payloadString) {
+        lastSavedStateRef.current = payloadString;
+        onSaveProjectState({
+          id: currentActiveProjectId,
+          title: postTitle,
+          variationBlocks,
+          activeBlockId,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+  }, [variationBlocks, postTitle, activeBlockId, currentActiveProjectId, onSaveProjectState]);
+
+  const checkIsVideoFile = (file: File) => {
+    if (file.type.startsWith('video/')) return true;
+    const name = file.name.toLowerCase();
+    return (
+      name.endsWith('.mp4') ||
+      name.endsWith('.mov') ||
+      name.endsWith('.webm') ||
+      name.endsWith('.m4v') ||
+      name.endsWith('.avi') ||
+      name.endsWith('.mkv')
+    );
+  };
+
+  const handleSaveTitle = () => {
+    setIsEditingTitle(false);
+    const trimmed = postTitle.trim() || 'Nueva Publicación';
+    setPostTitle(trimmed);
+    if (onTitleChange) {
+      onTitleChange(trimmed);
+    } else if (onContentStarted) {
+      onContentStarted(trimmed);
+    }
+  };
+
   const handleCaptionChange = (text: string) => {
     setVariationBlocks((prev) =>
       prev.map((b) => (b.id === activeBlock.id ? { ...b, caption: text } : b))
     );
     if (text.trim() !== '' && onContentStarted) {
-      onContentStarted(text);
+      onContentStarted(postTitle || text);
     }
   };
 
-  // Toggle de redes sociales en el bloque activo
+  // Obtener plataformas de redes sociales bloqueadas para el bloque activo
+  // (Redes seleccionadas en otros bloques que comparten EXACTAMENTE los mismos nombres de archivo)
+  const getBlockedPlatformsForBlock = (
+    targetBlock: ContentVariationBlock,
+    allBlocks: ContentVariationBlock[]
+  ): string[] => {
+    if (!targetBlock || targetBlock.thumbnails.length === 0) return [];
+
+    const blockedSet = new Set<string>();
+
+    allBlocks.forEach((otherBlock) => {
+      if (otherBlock.id !== targetBlock.id && otherBlock.thumbnails.length > 0) {
+        if (areMediaSetsEqual(targetBlock, otherBlock)) {
+          otherBlock.selectedPlatforms.forEach((pId) => blockedSet.add(pId));
+        }
+      }
+    });
+
+    return Array.from(blockedSet);
+  };
+
+  const blockedPlatforms = getBlockedPlatformsForBlock(activeBlock, variationBlocks);
+
   const togglePlatform = (id: string) => {
+    if (blockedPlatforms.includes(id)) return;
+
     setVariationBlocks((prev) =>
       prev.map((b) => {
         if (b.id !== activeBlock.id) return b;
@@ -156,17 +331,56 @@ export default function PostEditorWorkspace({
     );
   };
 
-  // Selector de multimedia local: Agrupa imágenes en 1 bloque y crea 1 bloque individual por cada video
+  // Sanitizar redes seleccionadas: deselecciona automáticamente cualquier red en el bloque en edición que choque con bloques idénticos de multimedia existentes
+  const sanitizeBlockPlatformSelections = (
+    blocks: ContentVariationBlock[],
+    currentActiveId?: string
+  ): ContentVariationBlock[] => {
+    const passiveBlocks = blocks.filter((b) => b.id !== currentActiveId);
+    const activeItem = blocks.find((b) => b.id === currentActiveId);
+
+    const evaluationOrder = activeItem ? [...passiveBlocks, activeItem] : blocks;
+
+    const usedPlatformsByMediaSet = new Map<string, Set<string>>();
+    const resultMap = new Map<string, ContentVariationBlock>();
+
+    evaluationOrder.forEach((block) => {
+      if (block.thumbnails.length === 0) {
+        resultMap.set(block.id, block);
+        return;
+      }
+
+      const mediaKey = getBlockFileIdentifiers(block).sort().join('|||');
+
+      if (!usedPlatformsByMediaSet.has(mediaKey)) {
+        usedPlatformsByMediaSet.set(mediaKey, new Set(block.selectedPlatforms));
+        resultMap.set(block.id, block);
+      } else {
+        const claimedPlatforms = usedPlatformsByMediaSet.get(mediaKey)!;
+        const sanitizedPlatforms = block.selectedPlatforms.filter((p) => !claimedPlatforms.has(p));
+        sanitizedPlatforms.forEach((p) => claimedPlatforms.add(p));
+        resultMap.set(block.id, {
+          ...block,
+          selectedPlatforms: sanitizedPlatforms,
+        });
+      }
+    });
+
+    return blocks.map((b) => resultMap.get(b.id) || b);
+  };
+
+  // Selector de multimedia local: Identifica imágenes y videos y los distribuye en bloques
   const handleWorkspaceFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files).map((file) => ({
         file,
+        name: file.name,
         url: URL.createObjectURL(file),
-        isVideo: file.type.startsWith('video/'),
+        isVideo: checkIsVideoFile(file),
       }));
 
       if (onContentStarted) {
-        onContentStarted(filesArray[0]?.file?.name || 'Publicación Multimedia');
+        onContentStarted(postTitle !== 'Nueva Publicación' ? postTitle : filesArray[0]?.file?.name || 'Publicación Multimedia');
       }
 
       const images = filesArray.filter((f) => !f.isVideo);
@@ -174,93 +388,134 @@ export default function PostEditorWorkspace({
 
       setVariationBlocks((prev) => {
         let currentBlocks = [...prev];
-        const isCurrentEmpty = activeBlock.thumbnails.length === 0;
+        const activeIndex = currentBlocks.findIndex((b) => b.id === activeBlock.id);
+        if (activeIndex === -1) return currentBlocks;
+
+        const activeB = currentBlocks[activeIndex];
+        const isCurrentActiveEmpty = activeB.thumbnails.length === 0;
 
         let nextNum = currentBlocks.length + 1;
         const createdBlocks: ContentVariationBlock[] = [];
+        let hasUsedEmptyActiveBlock = false;
 
+        // 1. Manejo de Imágenes:
         if (images.length > 0) {
-          if (isCurrentEmpty) {
-            currentBlocks = currentBlocks.map((b) =>
-              b.id === activeBlock.id
-                ? {
-                  ...b,
-                  thumbnails: images.map((img) => img.url),
-                  activeMediaIndex: 0,
-                }
-                : b
-            );
+          const newImageUrls = images.map((img) => img.url);
+          const newImageNames = images.map((img) => img.name);
+          const existingNames = activeB.fileNames && activeB.fileNames.length === activeB.thumbnails.length
+            ? activeB.fileNames
+            : activeB.thumbnails.map(getFileNameFromUrl);
+
+          if (isCurrentActiveEmpty || !activeB.isVideoBlock) {
+            currentBlocks[activeIndex] = {
+              ...activeB,
+              thumbnails: isCurrentActiveEmpty
+                ? newImageUrls
+                : [...activeB.thumbnails, ...newImageUrls],
+              fileNames: isCurrentActiveEmpty
+                ? newImageNames
+                : [...existingNames, ...newImageNames],
+              activeMediaIndex: isCurrentActiveEmpty ? 0 : activeB.thumbnails.length,
+              isVideoBlock: false,
+            };
+            hasUsedEmptyActiveBlock = true;
           } else {
             createdBlocks.push({
               id: `variation-${Date.now()}-img`,
               number: nextNum++,
-              caption: activeBlock.caption || '',
-              selectedPlatforms: [...activeBlock.selectedPlatforms],
-              thumbnails: images.map((img) => img.url),
+              caption: '',
+              selectedPlatforms: [],
+              thumbnails: newImageUrls,
+              fileNames: newImageNames,
               activeMediaIndex: 0,
+              isVideoBlock: false,
             });
           }
         }
 
+        // 2. Manejo de Videos:
         videos.forEach((vid, idx) => {
-          if (isCurrentEmpty && images.length === 0 && idx === 0) {
-            currentBlocks = currentBlocks.map((b) =>
-              b.id === activeBlock.id
-                ? {
-                  ...b,
-                  thumbnails: [vid.url],
-                  activeMediaIndex: 0,
-                }
-                : b
-            );
+          if (isCurrentActiveEmpty && !hasUsedEmptyActiveBlock && images.length === 0 && idx === 0) {
+            currentBlocks[activeIndex] = {
+              ...activeB,
+              thumbnails: [vid.url],
+              fileNames: [vid.name],
+              activeMediaIndex: 0,
+              isVideoBlock: true,
+            };
+            hasUsedEmptyActiveBlock = true;
           } else {
             createdBlocks.push({
               id: `variation-${Date.now()}-vid-${idx}`,
               number: nextNum++,
-              caption: activeBlock.caption || '',
-              selectedPlatforms: [...activeBlock.selectedPlatforms],
+              caption: '',
+              selectedPlatforms: [],
               thumbnails: [vid.url],
+              fileNames: [vid.name],
               activeMediaIndex: 0,
+              isVideoBlock: true,
             });
           }
         });
 
         const updatedList = [...currentBlocks, ...createdBlocks];
+        const reindexed = updatedList.map((b, i) => ({ ...b, number: i + 1 }));
+
+        const targetActiveId = createdBlocks.length > 0 ? createdBlocks[0].id : activeBlock.id;
+        const sanitized = sanitizeBlockPlatformSelections(reindexed, targetActiveId);
+
         if (createdBlocks.length > 0) {
           setActiveBlockId(createdBlocks[0].id);
+        } else if (hasUsedEmptyActiveBlock && activeIndex !== -1) {
+          setActiveBlockId(currentBlocks[activeIndex].id);
         }
-        return updatedList;
+
+        return sanitized;
       });
+
+      if (e.target) e.target.value = '';
     }
   };
 
-  // Eliminar multimedia individual del bloque activo
+  // Eliminar multimedia individual
   const handleRemoveMediaFromActiveBlock = (indexToRemove: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setVariationBlocks((prev) =>
-      prev.map((b) => {
+    setVariationBlocks((prev) => {
+      const updated = prev.map((b) => {
         if (b.id !== activeBlock.id) return b;
         const updatedThumbnails = b.thumbnails.filter((_, i) => i !== indexToRemove);
+        const currentNames = b.fileNames && b.fileNames.length === b.thumbnails.length
+          ? b.fileNames
+          : b.thumbnails.map(getFileNameFromUrl);
+        const updatedFileNames = currentNames.filter((_, i) => i !== indexToRemove);
         const newIndex = Math.min(b.activeMediaIndex, Math.max(0, updatedThumbnails.length - 1));
         return {
           ...b,
           thumbnails: updatedThumbnails,
+          fileNames: updatedFileNames,
           activeMediaIndex: newIndex,
         };
-      })
-    );
+      });
+      return sanitizeBlockPlatformSelections(updated, activeBlock.id);
+    });
   };
 
-  // Crear un nuevo Bloque de Variación de Contenido vacío (+)
+  // Crear un nuevo Bloque de Variación (Duplica la multimedia del bloque actual, pero inicia sin redes seleccionadas ni texto)
   const handleAddVariationBlock = () => {
     const nextNumber = variationBlocks.length + 1;
+    const currentNames = activeBlock && activeBlock.fileNames && activeBlock.fileNames.length === activeBlock.thumbnails.length
+      ? activeBlock.fileNames
+      : activeBlock ? activeBlock.thumbnails.map(getFileNameFromUrl) : [];
+
     const newBlock: ContentVariationBlock = {
       id: `variation-${Date.now()}`,
       number: nextNumber,
-      caption: '',
-      selectedPlatforms: ['facebook'],
-      thumbnails: [],
-      activeMediaIndex: 0,
+      caption: '', // Texto en blanco para la nueva variación
+      selectedPlatforms: [], // Iniciar limpio sin pre-seleccionar redes activas de otras variaciones
+      thumbnails: activeBlock ? [...activeBlock.thumbnails] : [],
+      fileNames: [...currentNames],
+      activeMediaIndex: activeBlock ? activeBlock.activeMediaIndex : 0,
+      isVideoBlock: activeBlock ? activeBlock.isVideoBlock : false,
     };
     setVariationBlocks((prev) => [...prev, newBlock]);
     setActiveBlockId(newBlock.id);
@@ -278,11 +533,11 @@ export default function PostEditorWorkspace({
     }
   };
 
-  const handleAddImage = () => {
+  const handleOpenPicker = () => {
     workspaceFileInputRef.current?.click();
   };
 
-  // Navegación fluida de miniaturas en el bloque activo
+  // Navegación de miniaturas
   const handlePrevThumb = () => {
     setVariationBlocks((prev) =>
       prev.map((b) =>
@@ -317,19 +572,18 @@ export default function PostEditorWorkspace({
     }
   };
 
-  // Cambiar miniatura activa en el bloque actual
   const handleSelectThumbnail = (index: number) => {
     setVariationBlocks((prev) =>
       prev.map((b) => (b.id === activeBlock.id ? { ...b, activeMediaIndex: index } : b))
     );
   };
 
-  // Calcular rangos contiguos de selección para la barra lateral del bloque activo
+  // Rangos de selección para redes sociales activas en el bloque actual (Píldora Negra)
   const selectionRanges: { start: number; end: number }[] = [];
   let rangeStart: number | null = null;
 
   SOCIAL_PLATFORMS.forEach((plat, idx) => {
-    const isSelected = activeBlock?.selectedPlatforms.includes(plat.id);
+    const isSelected = activeBlock?.selectedPlatforms.includes(plat.id) && !blockedPlatforms.includes(plat.id);
     if (isSelected) {
       if (rangeStart === null) rangeStart = idx;
     } else {
@@ -344,13 +598,16 @@ export default function PostEditorWorkspace({
   }
 
   const hasMediaInActiveBlock = activeBlock && activeBlock.thumbnails && activeBlock.thumbnails.length > 0;
+
+  // La vista inicial por defecto se mantiene mientras no haya multimedia seleccionada
   const isMinimalView = !hasMediaInActiveBlock;
 
-  // VISTA INICIAL MINIMALISTA (RÉPLICA EXACTA 1:1 DE LA IMAGEN 2 ADJUNTADA POR EL USUARIO)
+  /* =========================================================================
+     1. VISTA POR DEFECTO: MINIMALISTA (CON PÍLDORA DE REDES SOCIALES AL ESCRIBIR TEXTO)
+     ========================================================================= */
   if (isMinimalView) {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full select-none relative gap-8 my-auto">
-        {/* Input oculto de archivos para el botón + Círculo */}
         <input
           type="file"
           ref={workspaceFileInputRef}
@@ -360,50 +617,214 @@ export default function PostEditorWorkspace({
           className="hidden"
         />
 
-        {/* TÍTULO SUPERIOR SIMPLIFICADO: "Comparte algo nuevo hoy" */}
-        <motion.h2
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-bold text-[#555555] tracking-tight text-center"
-        >
-          Comparte algo nuevo hoy
-        </motion.h2>
-
-        {/* CONTENEDOR DE BARRA EN FORMA DE PÍLDORA (RÉPLICA EXACTA DE LA IMAGEN 2) */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-[56.8229vw] bg-[#E5E5E5]/80 backdrop-blur-sm border-2 border-[#888888]/40 rounded-full p-2 flex items-center gap-3 shadow-sm"
-        >
-          {/* Círculo oscuro con ícono + grande a la izquierda */}
-          <button
-            onClick={handleAddImage}
-            className="w-14 h-14 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 flex-shrink-0 cursor-pointer shadow-md"
-            title="Añadir multimedia (Imágenes o Videos)"
-          >
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
-
-          {/* Campo de entrada de texto interno redondeado */}
-          <div className="flex-1 h-14 bg-white border border-black/20 rounded-full px-6 flex items-center shadow-inner">
+        {/* TÍTULO SUPERIOR EDITABLE */}
+        <div className="flex items-center justify-center gap-2">
+          {isEditingTitle ? (
             <input
               type="text"
-              value={activeBlock.caption}
-              onChange={(e) => handleCaptionChange(e.target.value)}
-              placeholder="Escribe la descripción de la publicación..."
-              className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveTitle();
+              }}
+              autoFocus
+              className="text-2xl font-bold text-black border-b-2 border-black outline-none bg-transparent text-center px-2 py-0.5"
             />
-          </div>
-        </motion.div>
+          ) : (
+            <motion.h2
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setIsEditingTitle(true)}
+              className="text-2xl font-bold text-[#555555] hover:text-black transition-colors tracking-tight text-center cursor-pointer flex items-center justify-center gap-2 group"
+              title="Haz clic para editar el nombre del proyecto"
+            >
+              <span>{postTitle !== 'Nueva Publicación' ? postTitle : 'Comparte algo nuevo hoy'}</span>
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-black transition-colors"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </motion.h2>
+          )}
+        </div>
+
+        {/* CONTENEDOR RELATIVO PARA ALINEAR LA PÍLDORA DE REDES SOCIALES */}
+        <div className="relative">
+          {/* BARRA DE ENTRADA EN CÁPSULA */}
+          <motion.div
+            layoutId="post-bar-outer"
+            className="w-[52vw] max-w-[800px] h-[64px] bg-[#E5E5E5]/90 border-2 border-[#888888]/40 rounded-full p-1.5 flex items-center gap-3 shadow-xs relative"
+          >
+            {/* Círculo oscuro metálico con ícono + grande a la izquierda */}
+            <button
+              onClick={handleOpenPicker}
+              className="w-13 h-13 aspect-square bg-gradient-to-b from-[#555555] to-[#333333] hover:from-[#444444] hover:to-[#222222] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 flex-shrink-0 cursor-pointer shadow-md"
+              title="Añadir multimedia (Imágenes o Videos)"
+            >
+              <span className="text-3xl font-light leading-none -mt-0.5">+</span>
+            </button>
+
+            {/* Campo de entrada de texto interno redondeado (con layoutId para Morph) */}
+            <motion.div
+              layoutId="post-caption-container"
+              className="flex-1 h-full bg-white border border-black/20 rounded-full px-6 flex items-center shadow-inner"
+            >
+              <input
+                type="text"
+                value={activeBlock.caption}
+                onChange={(e) => handleCaptionChange(e.target.value)}
+                placeholder="Comparte algo nuevo hoy..."
+                className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic"
+              />
+            </motion.div>
+          </motion.div>
+
+          {/* PÍLDORA DE REDES SOCIALES EN VISTA MINIMALISTA */}
+          {/* Requisito: Alineada con el borde inferior de la barra de texto y espaciada 15px a la derecha */}
+          <AnimatePresence>
+            {activeBlock.caption.trim() !== '' && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, x: 10 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.8, x: 10 }}
+                className="absolute bottom-0 left-[calc(100%+15px)] z-20 pointer-events-auto"
+              >
+                <div
+                  style={{
+                    width: '4.4792vw',
+                    minWidth: '58px',
+                    height: '30.9259vh',
+                    minHeight: '250px',
+                  }}
+                  className="bg-[#D9D9D9] rounded-full border border-black/10 relative overflow-hidden shadow-lg"
+                >
+                  {/* Fondo negro unificado para rangos de selección activa */}
+                  {selectionRanges.map((range) => {
+                    const isSingle = range.start === range.end;
+                    const yStartCenterPx = 42.5 + range.start * 62.25;
+                    const yEndCenterPx = 42.5 + range.end * 62.25;
+
+                    const yTopPx = yStartCenterPx - 32.5;
+                    const yBottomPx = yEndCenterPx + 32.5;
+                    const heightPx = yBottomPx - yTopPx;
+
+                    const topPercent = (yTopPx / 334) * 100;
+                    const heightPercent = (heightPx / 334) * 100;
+
+                    return (
+                      <div
+                        key={`min-range-${range.start}-${range.end}`}
+                        className="absolute left-0 right-0 flex items-center justify-center pointer-events-none z-0 transition-all duration-200"
+                        style={{
+                          top: `${topPercent}%`,
+                          height: `${heightPercent}%`,
+                        }}
+                      >
+                        <div
+                          className="bg-black rounded-full"
+                          style={{
+                            width: '75.5814%',
+                            height: isSingle ? undefined : '100%',
+                            aspectRatio: isSingle ? '1 / 1' : undefined,
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* Íconos de Redes Sociales */}
+                  {SOCIAL_PLATFORMS.map((plat, idx) => {
+                    const isBlocked = blockedPlatforms.includes(plat.id);
+                    const isSel = activeBlock?.selectedPlatforms.includes(plat.id) && !isBlocked;
+                    const yCenterPx = 42.5 + idx * 62.25;
+                    const topPercent = (yCenterPx / 334) * 100;
+
+                    return (
+                      <div
+                        key={`min-${plat.id}`}
+                        onClick={() => togglePlatform(plat.id)}
+                        style={{
+                          top: `${topPercent}%`,
+                          transform: 'translateY(-50%)',
+                        }}
+                        className={`absolute inset-x-0 flex items-center justify-center z-10 ${
+                          isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title={
+                          isBlocked
+                            ? `${plat.name} (Asignada a otra variación con los mismos archivos)`
+                            : plat.name
+                        }
+                      >
+                        <div
+                          className={`flex items-center justify-center transition-colors ${
+                            isSel
+                              ? 'text-white font-bold'
+                              : isBlocked
+                              ? 'text-[#999999] opacity-40 font-normal'
+                              : 'text-[#666666] hover:text-[#333333] font-semibold'
+                          }`}
+                        >
+                          {plat.id === 'facebook' && (
+                            <span className="text-xl font-black font-sans leading-none">f</span>
+                          )}
+                          {plat.id === 'instagram' && (
+                            <svg className="w-[21px] h-[21px]" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                            </svg>
+                          )}
+                          {plat.id === 'x' && (
+                            <span className="text-xl font-extrabold leading-none">𝕏</span>
+                          )}
+                          {plat.id === 'linkedin' && (
+                            <span className="text-xl font-bold font-sans leading-none">in</span>
+                          )}
+                          {plat.id === 'tiktok' && (
+                            <svg className="w-[21px] h-[21px]" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     );
   }
 
+  /* =========================================================================
+     2. VISTA COMPLETA DE EDICIÓN (CON ANIMACIÓN MORPH AL SELECCIONAR MULTIMEDIA)
+     ========================================================================= */
+  const activeMediaUrl = activeBlock?.thumbnails[activeBlock?.activeMediaIndex] || '';
+  const isVideo =
+    activeBlock?.isVideoBlock === true ||
+    activeMediaUrl.endsWith('.mp4') ||
+    activeMediaUrl.endsWith('.mov') ||
+    activeMediaUrl.endsWith('.webm') ||
+    activeMediaUrl.endsWith('.m4v') ||
+    activeMediaUrl.endsWith('.avi') ||
+    activeMediaUrl.endsWith('.mkv') ||
+    activeMediaUrl.includes('video');
+
+  // Elevación vertical independiente para vista de video e imagen (sube título y tarjetas)
+  const videoTopMargin = '-mt-[8.5vh]';
+  const imageTopMargin = '-mt-[8.5vh]';
+
   return (
-    <div className="flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative">
-      {/* Input oculto de archivos para el botón + Añadir */}
+    <div
+      className={`flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative ${
+        isVideo ? videoTopMargin : imageTopMargin
+      }`}
+    >
       <input
         type="file"
         ref={workspaceFileInputRef}
@@ -413,84 +834,108 @@ export default function PostEditorWorkspace({
         className="hidden"
       />
 
-      {/* TÍTULO SUPERIOR CENTRADO CON INDICADOR DE BLOQUE ACTIVO */}
+      {/* TÍTULO SUPERIOR CENTRADO EDITABLE CON INDICADOR DE BLOQUE ACTIVO */}
       <div className="flex items-center gap-2 mb-1">
-        <h2 className="text-sm font-bold text-black tracking-tight text-center">
-          {currentPostTitle}
-        </h2>
+        {isEditingTitle ? (
+          <input
+            type="text"
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            onBlur={handleSaveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveTitle();
+            }}
+            autoFocus
+            className="text-sm font-bold text-black border-b border-black outline-none bg-transparent text-center px-2 py-0.5"
+          />
+        ) : (
+          <h2
+            onClick={() => setIsEditingTitle(true)}
+            className="text-sm font-bold text-black tracking-tight text-center cursor-pointer hover:opacity-75 flex items-center gap-1.5 group"
+            title="Haz clic para editar el nombre del proyecto"
+          >
+            <span>{postTitle}</span>
+            <svg
+              className="w-3.5 h-3.5 text-gray-400 group-hover:text-black transition-colors"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </h2>
+        )}
         <span className="text-[11px] font-black bg-black text-white px-2.5 py-0.5 rounded-full">
           Variación {activeBlock.number}
         </span>
       </div>
 
-      {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) x 398px (36.8519vh) CENTRADO */}
+      {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) CENTRADO */}
       <div className="relative w-full flex items-center justify-center">
         {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO */}
-        <div className="bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] p-3 flex gap-3.5 items-center justify-between w-[56.8229vw] h-[36.8519vh]">
+        <div
+          className={`bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] flex items-center justify-between w-[56.8229vw] transition-all duration-300 ${isVideo ? 'h-[62.9630vh]' : 'h-[36.8519vh]'
+            }`}
+          style={{
+            paddingTop: '14px',
+            paddingBottom: '14px',
+            paddingLeft: '10px',
+            paddingRight: '10px',
+            gap: '12px',
+          }}
+        >
           {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN O VIDEO */}
-          <div
-            className="flex flex-col items-center justify-between h-full"
-            style={{
-              width: '30.7974%',
-              marginLeft: '1.3749%',
-            }}
-          >
+          {isVideo ? (
+            <div className="h-full w-[31.0898%] rounded-[20px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative flex-shrink-0 shadow-sm">
+              <video
+                src={activeMediaUrl}
+                controls
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover rounded-[20px]"
+              />
+            </div>
+          ) : (
             <div
-              className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group"
+              className="flex flex-col items-center justify-between h-full"
               style={{
-                marginTop: '3.7688%',
+                width: '30.7974%',
               }}
             >
-              {isVideo ? (
-                <video
-                  src={activeMediaUrl}
-                  controls
-                  className="w-full h-full object-cover"
-                />
-              ) : (
+              <div className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group">
                 <img
                   src={activeMediaUrl}
                   alt="active-media"
                   className="w-full h-full object-cover"
                 />
-              )}
-            </div>
+              </div>
 
-            {/* PUNTOS DE PAGINACIÓN DE CARRUSEL DE LA VARIACIÓN ACTIVA */}
-            <div
-              className="flex items-center justify-center gap-1.5 w-full"
-              style={{
-                marginBottom: '3.7688%',
-              }}
-            >
-              {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map(
-                (_, idx) => (
-                  <span
-                    key={idx}
-                    className={`rounded-full transition-all ${idx === activeBlock.activeMediaIndex
+              {/* PUNTOS DE PAGINACIÓN DE CARRUSEL DE LA VARIACIÓN ACTIVA */}
+              <div className="flex items-center justify-center gap-1.5 w-full my-1">
+                {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map(
+                  (_, idx) => (
+                    <span
+                      key={idx}
+                      className={`rounded-full transition-all ${idx === activeBlock.activeMediaIndex
                         ? 'w-2 h-2 bg-[#555555]'
                         : 'w-1.5 h-1.5 bg-[#BBBBBB]'
-                      }`}
-                  />
-                )
-              )}
+                        }`}
+                    />
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO PARA LA VARIACIÓN ACTIVA */}
-          <div
-            className="flex-1 bg-white border-2 border-[#888888]/40 rounded-[18px] p-4 flex flex-col overflow-y-auto self-center"
-            style={{
-              height: '91.4573%',
-              marginRight: '1.3749%',
-            }}
-          >
+          {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO */}
+          <div className="flex-1 h-full bg-white border-2 border-[#888888]/40 rounded-[20px] p-6 flex flex-col overflow-y-auto">
             {activeBlock.caption.trim() ? (
-              <p className="text-xs font-normal text-black leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm font-normal text-black leading-relaxed whitespace-pre-wrap">
                 {activeBlock.caption}
               </p>
             ) : (
-              <span className="text-xs italic text-[#999999] font-normal">
+              <span className="text-sm italic text-[#999999] font-normal">
                 Descripción de contenido para Variación {activeBlock.number}
               </span>
             )}
@@ -507,7 +952,6 @@ export default function PostEditorWorkspace({
         >
           {/* CONTENEDOR RELATIVO DEL BOTÓN CÍRCULO DESPLEGABLE */}
           <div className="relative">
-            {/* Círculo superior chevron down */}
             <button
               onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
               style={{
@@ -571,8 +1015,8 @@ export default function PostEditorWorkspace({
                               aspectRatio: '1 / 1',
                             }}
                             className={`relative group rounded-full flex items-center justify-center font-black text-base transition-all flex-shrink-0 cursor-pointer ${isCurrentActive
-                                ? 'bg-black text-white scale-105 shadow-md border-2 border-black'
-                                : 'bg-white text-black border border-black/20 hover:border-black'
+                              ? 'bg-black text-white scale-105 shadow-md border-2 border-black'
+                              : 'bg-white text-black border border-black/20 hover:border-black'
                               }`}
                             title={`Variación de Contenido #${block.number}`}
                           >
@@ -636,13 +1080,17 @@ export default function PostEditorWorkspace({
             </AnimatePresence>
           </div>
 
-          {/* Barra vertical de redes sociales asignadas al bloque activo */}
-          <div
+          {/* Barra vertical de redes sociales asignadas al bloque activo (con animación de entrada y salida) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, x: 10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.8, x: 10 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
             style={{
               width: '4.4792vw',
               height: '30.9259vh',
             }}
-            className="bg-[#D9D9D9] rounded-full border border-black/10 relative overflow-hidden"
+            className="bg-[#D9D9D9] rounded-full border border-black/10 relative overflow-hidden shadow-lg"
           >
             {selectionRanges.map((range) => {
               const isSingle = range.start === range.end;
@@ -698,7 +1146,8 @@ export default function PostEditorWorkspace({
             })}
 
             {SOCIAL_PLATFORMS.map((plat, idx) => {
-              const isSel = activeBlock?.selectedPlatforms.includes(plat.id);
+              const isBlocked = blockedPlatforms.includes(plat.id);
+              const isSel = activeBlock?.selectedPlatforms.includes(plat.id) && !isBlocked;
               const yCenterPx = 42.5 + idx * 62.25;
               const topPercent = (yCenterPx / 334) * 100;
 
@@ -710,12 +1159,23 @@ export default function PostEditorWorkspace({
                     top: `${topPercent}%`,
                     transform: 'translateY(-50%)',
                   }}
-                  className="absolute inset-x-0 flex items-center justify-center cursor-pointer z-10"
-                  title={plat.name}
+                  className={`absolute inset-x-0 flex items-center justify-center z-10 ${
+                    isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
+                  title={
+                    isBlocked
+                      ? `${plat.name} (Asignada a otra variación con los mismos archivos)`
+                      : plat.name
+                  }
                 >
                   <div
-                    className={`flex items-center justify-center transition-colors ${isSel ? 'text-white font-bold' : 'text-[#666666] hover:text-[#333333] font-semibold'
-                      }`}
+                    className={`flex items-center justify-center transition-colors ${
+                      isSel
+                        ? 'text-white font-bold'
+                        : isBlocked
+                        ? 'text-[#999999] opacity-40 font-normal'
+                        : 'text-[#666666] hover:text-[#333333] font-semibold'
+                    }`}
                   >
                     {plat.id === 'facebook' && (
                       <span className="text-xl font-black font-sans leading-none">f</span>
@@ -740,128 +1200,133 @@ export default function PostEditorWorkspace({
                 </div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* BARRA INTERMEDIA DE CONTROL Y MINIATURAS DEL BLOQUE ACTIVO */}
-      <div
-        className="flex flex-col items-center gap-1 w-[56.8229vw]"
-        style={{ marginTop: '.2vh' }}
-      >
-        <div className="w-full flex items-stretch justify-between">
-          {/* Contenedor general de miniaturas (838px x 129px) */}
-          <div className="w-[43.6458vw] h-[11.9444vh] bg-[#E5E5E5]/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[22px] overflow-hidden flex items-center">
-            <div
-              ref={thumbnailScrollRef}
-              className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth"
-              style={{
-                paddingLeft: '1.1933%',
-                paddingRight: '1.1933%',
-                paddingTop: '7.7519%',
-                paddingBottom: '7.7519%',
-                gap: '1.0740%',
-              }}
-            >
-              {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map((_, idx) => {
-                const thumbUrl = activeBlock.thumbnails[idx];
-                const isActive = idx === activeBlock.activeMediaIndex;
+      {/* BARRA INTERMEDIA DE CONTROL Y MINIATURAS DEL BLOQUE ACTIVO (SOLO PARA IMÁGENES / CARRUSEL) */}
+      {!isVideo && (
+        <div
+          className="flex flex-col items-center gap-1 w-[56.8229vw]"
+          style={{ marginTop: '.2vh' }}
+        >
+          <div className="w-full flex items-stretch justify-between">
+            {/* Contenedor general de miniaturas (838px x 129px) */}
+            <div className="w-[43.6458vw] h-[11.9444vh] bg-[#E5E5E5]/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[22px] overflow-hidden flex items-center">
+              <div
+                ref={thumbnailScrollRef}
+                className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth"
+                style={{
+                  paddingLeft: '1.1933%',
+                  paddingRight: '1.1933%',
+                  paddingTop: '7.7519%',
+                  paddingBottom: '7.7519%',
+                  gap: '1.0740%',
+                }}
+              >
+                {Array.from({ length: Math.max(7, activeBlock.thumbnails.length) }).map((_, idx) => {
+                  const thumbUrl = activeBlock.thumbnails[idx];
+                  const isActive = idx === activeBlock.activeMediaIndex;
 
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => thumbUrl && handleSelectThumbnail(idx)}
-                    style={{
-                      width: '13.0072%',
-                      aspectRatio: '1 / 1',
-                    }}
-                    className={`relative group rounded-2xl overflow-hidden cursor-pointer transition-all flex-shrink-0 flex items-center justify-center ${thumbUrl
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => thumbUrl && handleSelectThumbnail(idx)}
+                      style={{
+                        width: '13.0072%',
+                        aspectRatio: '1 / 1',
+                      }}
+                      className={`relative group rounded-2xl overflow-hidden cursor-pointer transition-all flex-shrink-0 flex items-center justify-center ${thumbUrl
                         ? isActive
                           ? 'border-2 border-black scale-105'
                           : 'border border-black/20 hover:border-black'
                         : 'border-2 border-[#888888]/40 bg-white'
-                      }`}
-                  >
-                    {thumbUrl ? (
-                      <>
-                        {thumbUrl.endsWith('.mp4') || thumbUrl.includes('video') ? (
-                          <video src={thumbUrl} className="w-full h-full object-cover" />
-                        ) : (
-                          <img
-                            src={thumbUrl}
-                            alt={`thumb-${idx}`}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                        {activeBlock.thumbnails.length > 1 && (
-                          <button
-                            onClick={(e) => handleRemoveMediaFromActiveBlock(idx, e)}
-                            className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                            title="Eliminar esta imagen del bloque"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </>
-                    ) : null}
-                  </div>
-                );
-              })}
+                        }`}
+                    >
+                      {thumbUrl ? (
+                        <>
+                          {thumbUrl.endsWith('.mp4') || thumbUrl.includes('video') ? (
+                            <video src={thumbUrl} className="w-full h-full object-cover" />
+                          ) : (
+                            <img
+                              src={thumbUrl}
+                              alt={`thumb-${idx}`}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          {activeBlock.thumbnails.length > 1 && (
+                            <button
+                              onClick={(e) => handleRemoveMediaFromActiveBlock(idx, e)}
+                              className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                              title="Eliminar esta imagen del bloque"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pila vertical de 2 botones de 217px x 61px con gap de 6px */}
+            <div
+              className="flex flex-col justify-between"
+              style={{
+                width: '11.3021vw',
+                height: '11.9444vh',
+                marginLeft: '1.875vw',
+              }}
+            >
+              <button
+                onClick={handleOpenPicker}
+                style={{
+                  width: '11.3021vw',
+                  height: '5.6481vh',
+                }}
+                className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+              >
+                + Añadir
+              </button>
+
+              <button
+                style={{
+                  width: '11.3021vw',
+                  height: '5.6481vh',
+                }}
+                className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+              >
+                Imagen/Carrusel
+              </button>
             </div>
           </div>
 
-          {/* Pila vertical de 2 botones de 217px x 61px con gap de 6px */}
-          <div
-            className="flex flex-col justify-between"
-            style={{
-              width: '11.3021vw',
-              height: '11.9444vh',
-              marginLeft: '1.875vw',
-            }}
-          >
+          {/* Flechas de navegación centradas debajo del contenedor de miniaturas */}
+          <div className="w-[43.6458vw] flex items-center justify-center gap-6 text-[#666666] self-start mt-1">
             <button
-              onClick={handleAddImage}
-              style={{
-                width: '11.3021vw',
-                height: '5.6481vh',
-              }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+              onClick={handlePrevThumb}
+              className="hover:text-black font-extrabold text-sm transition-transform active:scale-95 cursor-pointer"
             >
-              + Añadir
+              ◄
             </button>
-
             <button
-              style={{
-                width: '11.3021vw',
-                height: '5.6481vh',
-              }}
-              className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+              onClick={handleNextThumb}
+              className="hover:text-black font-extrabold text-sm transition-transform active:scale-95 cursor-pointer"
             >
-              Imagen/Carrusel
+              ►
             </button>
           </div>
         </div>
-
-        {/* Flechas de navegación centradas debajo del contenedor de miniaturas */}
-        <div className="w-[43.6458vw] flex items-center justify-center gap-6 text-[#666666] self-start mt-1">
-          <button
-            onClick={handlePrevThumb}
-            className="hover:text-black font-extrabold text-sm transition-transform active:scale-95 cursor-pointer"
-          >
-            ◄
-          </button>
-          <button
-            onClick={handleNextThumb}
-            className="hover:text-black font-extrabold text-sm transition-transform active:scale-95 cursor-pointer"
-          >
-            ►
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* CAJA DE TEXTO INFERIOR DE LA VARIACIÓN ACTIVA CON BOTONES DE ACCIÓN */}
-      <div className="flex items-center gap-3 w-[56.8229vw] mt-2">
-        <div className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 min-h-[10vh]">
+      <div className="flex items-center gap-3 w-[56.8229vw] mt-[12.2037vh]">
+        <motion.div
+          layoutId="post-caption-container"
+          className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 min-h-[10vh]"
+        >
           <textarea
             value={activeBlock.caption}
             onChange={(e) => handleCaptionChange(e.target.value)}
@@ -869,7 +1334,7 @@ export default function PostEditorWorkspace({
             rows={2}
             className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
           />
-        </div>
+        </motion.div>
 
         {/* Pila vertical de botones redondos */}
         <div className="flex flex-col gap-2">
