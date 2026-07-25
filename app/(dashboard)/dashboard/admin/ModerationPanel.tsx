@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { moderateCause } from '@/app/actions/moderation';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { Check, X, Clock, Layers, Filter, CheckCircle2, XCircle } from 'lucide-react';
 
 interface Cause {
@@ -85,23 +86,40 @@ export default function AdminModerationPanel({ initialCauses }: { initialCauses:
         ))}
       </div>
 
-      {/* Grid de Contenidos */}
+      {/* Grid de Contenidos Animado */}
       {filteredCauses.length === 0 ? (
-        <div className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-12 text-center space-y-3 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-12 text-center space-y-3 shadow-sm folder-shape"
+        >
           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto shadow-sm">
             <Filter className="w-8 h-8 text-black/60" />
           </div>
-          <h3 className="text-xl font-black text-black uppercase tracking-tight">No hay causas para mostrar</h3>
+          <h3 className="nuh-title text-xl font-black text-black uppercase tracking-tight">No hay causas para mostrar</h3>
           <p className="text-xs text-[#666666] font-semibold max-w-sm mx-auto">
             Selecciona otro filtro o sube nuevos borradores desde el Editor del Dashboard.
           </p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: { opacity: 0 },
+            show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+          }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {filteredCauses.map((cause) => (
-            <div
+            <motion.div
               key={cause.id}
-              className="bg-[#D9D9D9] border border-black/10 rounded-[28px] p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              variants={{
+                hidden: { opacity: 0, y: 20, scale: 0.96 },
+                show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35 } },
+              }}
+              whileHover={{ y: -4, scale: 1.01 }}
+              className="bg-[#D9D9D9] border border-black/10 rounded-[28px] p-5 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between"
             >
               <div className="space-y-4">
                 {/* Media Preview */}
@@ -175,9 +193,9 @@ export default function AdminModerationPanel({ initialCauses }: { initialCauses:
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

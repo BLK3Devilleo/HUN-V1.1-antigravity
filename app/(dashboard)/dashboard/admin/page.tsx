@@ -74,8 +74,8 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        {/* Header Principal */}
-        <div className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-8 shadow-sm relative overflow-hidden">
+        {/* Header Principal Bento Box (Estilo Don Emilio) */}
+        <div className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-8 shadow-sm relative overflow-hidden folder-shape">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-bold text-[#666666] uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-black" />
@@ -83,7 +83,7 @@ export default async function AdminPage() {
             </span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-black tracking-tight leading-tight mb-3">
+          <h1 className="nuh-title text-3xl sm:text-4xl md:text-5xl font-extrabold text-black tracking-tight leading-tight mb-3">
             Moderación y Aprobación de Causas
           </h1>
 
