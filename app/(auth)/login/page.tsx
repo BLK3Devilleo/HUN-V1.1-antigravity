@@ -42,7 +42,7 @@ function LoginContent() {
       initial={{ opacity: 0, scale: 0.92, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-md bg-[#D9D9D9] border border-black/10 p-8 sm:p-10 rounded-[36px] shadow-2xl text-center relative z-10 space-y-6 folder-shape"
+      className="w-full max-w-md bg-[#D9D9D9] border border-black/10 p-8 sm:p-10 rounded-[36px] shadow-2xl text-center relative z-10 space-y-6"
     >
       {/* Header Badge */}
       <div className="flex items-center justify-center gap-2">

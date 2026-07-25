@@ -91,7 +91,7 @@ export default function AdminModerationPanel({ initialCauses }: { initialCauses:
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-12 text-center space-y-3 shadow-sm folder-shape"
+          className="bg-[#D9D9D9] border border-black/10 rounded-[28px] p-12 text-center space-y-3 shadow-sm"
         >
           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto shadow-sm">
             <Filter className="w-8 h-8 text-black/60" />

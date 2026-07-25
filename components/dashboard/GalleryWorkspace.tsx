@@ -87,7 +87,7 @@ export default function GalleryWorkspace({ initialItems }: { initialItems: Media
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-12 sm:p-16 text-center space-y-4 shadow-sm folder-shape"
+          className="bg-[#D9D9D9] border border-black/10 rounded-[28px] p-12 sm:p-16 text-center space-y-4 shadow-sm"
         >
           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto shadow-sm">
             <FolderOpen className="w-8 h-8 text-black/60" />
