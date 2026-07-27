@@ -252,7 +252,7 @@ export default function DashboardPage() {
         style={{ top: '4.0741vh', left: '2.2917vw', gap: '0.6vw' }}
       >
         <div
-          className="rounded-full text-sm font-semibold text-black flex items-center justify-center select-none shadow-sm"
+          className="rounded-full text-[2.5vh] font-normal text-black flex items-center justify-center select-none shadow-sm"
           style={{
             width: '15.5vw',
             height: '5.9vh',
@@ -262,7 +262,7 @@ export default function DashboardPage() {
           Build For Venezuela
         </div>
         <div
-          className="px-6 rounded-full text-sm font-bold text-black flex items-center justify-center select-none shadow-sm"
+          className="px-6 rounded-full text-base font-bold text-black flex items-center justify-center select-none shadow-sm"
           style={{
             width: '7vw',
             height: '5.9vh',
@@ -286,11 +286,10 @@ export default function DashboardPage() {
           scale: isEditorActive ? 0.22 : 1,
         }}
         transition={transitionProps}
-        className={`absolute flex flex-col items-center z-30 ${
-          isEditorActive
-            ? 'origin-top-right cursor-pointer pointer-events-auto hover:opacity-80 transition-opacity'
-            : 'origin-top pointer-events-none'
-        }`}
+        className={`absolute flex flex-col items-center z-30 ${isEditorActive
+          ? 'origin-top-right cursor-pointer pointer-events-auto hover:opacity-80 transition-opacity'
+          : 'origin-top pointer-events-none'
+          }`}
         style={{ willChange: 'transform, top, right, left' }}
         onClick={() => {
           if (isEditorActive) {
@@ -324,7 +323,7 @@ export default function DashboardPage() {
         style={{
           top: '14.9vh',
           left: '2.2917vw',
-          width: '5.2vw',
+          width: '4vw',
           height: '40vh',
         }}
       >
@@ -356,12 +355,14 @@ export default function DashboardPage() {
               <div className="relative">
                 <button
                   onClick={() => setActiveModal(activeModal === 'org' ? null : 'org')}
-                  className="flex items-center justify-between px-5 rounded-full text-sm font-semibold border border-black/10 transition-transform active:scale-95 cursor-pointer shadow-sm hover:bg-[#CCCCCC]"
+                  className="flex items-center justify-between rounded-full text-sm font-semibold border border-black/10 transition-transform active:scale-95 cursor-pointer shadow-sm hover:bg-[#CCCCCC]"
                   style={{
                     width: '22vw',
                     height: '5.5vh',
                     background: '#D9D9D9',
                     color: '#000000',
+                    paddingLeft: '1.8vw',
+                    paddingRight: '1.8vw',
                   }}
                 >
                   <span className="truncate pr-2">{orgNames[selectedOrg] || 'Seleccionar Organización'}</span>
@@ -396,11 +397,11 @@ export default function DashboardPage() {
                             setSelectedOrg(id);
                             setActiveModal(null);
                           }}
-                          className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                            selectedOrg === id
-                              ? 'bg-black text-white'
-                              : 'hover:bg-neutral-100 text-black'
-                          }`}
+                          style={{ paddingLeft: '1.2vw', paddingRight: '1.2vw' }}
+                          className={`w-full text-left py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${selectedOrg === id
+                            ? 'bg-black text-white'
+                            : 'hover:bg-neutral-100 text-black'
+                            }`}
                         >
                           <span>{name}</span>
                           {selectedOrg === id && <span>✓</span>}
@@ -510,7 +511,9 @@ export default function DashboardPage() {
               willChange: 'transform, opacity',
             }}
           >
-            <UploadQueueWidget />
+            <UploadQueueWidget
+              description={projectsList.find((p) => p.id === activeProjectId)?.variationBlocks?.[0]?.caption || projectsList[0]?.variationBlocks?.[0]?.caption}
+            />
           </motion.div>
         )}
       </AnimatePresence>

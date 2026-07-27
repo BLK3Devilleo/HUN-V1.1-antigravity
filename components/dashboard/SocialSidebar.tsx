@@ -25,11 +25,11 @@ const PLATFORMS: Platform[] = [
 ];
 
 const UTILS = [
-  { id: 'feed', label: 'Feed Global', color: '#10B981', href: '/dashboard/feed' },
-  { id: 'admin', label: 'Moderación Admin', color: '#7C3AED', href: '/dashboard/admin' },
-  { id: 'gallery', label: 'Mi Galería', color: '#2563EB', href: '/dashboard/gallery' },
-  { id: 'settings', label: 'Ajustes', color: '#4B5563', href: '/dashboard/settings' },
+  { id: 'settings', label: 'Ajustes de Configuración', color: '#4B5563', href: '/dashboard/settings' },
   { id: 'profile', label: 'Mi Perfil', color: '#1F2937' },
+  { id: 'gallery', label: 'Mi Galería', color: '#2563EB', href: '/dashboard/gallery' },
+  { id: 'admin', label: 'Moderación Admin', color: '#7C3AED', href: '/dashboard/admin' },
+  { id: 'feed', label: 'Feed Global', color: '#10B981', href: '/dashboard/feed' },
 ];
 
 interface SocialSidebarProps {
@@ -39,6 +39,13 @@ interface SocialSidebarProps {
 
 export default function SocialSidebar({ isTransitioning = false, onOpenProfile }: SocialSidebarProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [gearRotation, setGearRotation] = useState(0);
+
+  const handleConfigClick = () => {
+    setGearRotation((prev) => prev + 360);
+    setIsConfigOpen((prev) => !prev);
+  };
 
   const renderIcon = (id: string) => {
     switch (id) {
@@ -59,7 +66,7 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
       case 'gallery':
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm1 2v10h14V7H5zm2 8l3-4 2.5 3L14 11l4 5H7z" /></svg>;
       case 'settings':
-        return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z" /></svg>;
+        return <svg viewBox="0 0 24 24" fill="white" className="w-[55%] h-[55%]"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z" /></svg>;
       case 'profile':
         return <svg viewBox="0 0 24 24" fill="white" className="w-[50%] h-[50%]"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>;
       default:
@@ -68,15 +75,16 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
   };
 
   return (
-    <div className={`flex flex-col gap-[2cqh] w-full h-full [container-type:size] ${expanded ? 'items-start' : 'items-center'}`}>
+    <div className={`flex flex-col gap-3 w-full h-full [container-type:size] ${expanded ? 'items-start' : 'items-center'}`}>
+      {/* BARRA DE REDES SOCIALES CONECTADAS */}
       <motion.div
         layout
         onClick={() => setExpanded(!expanded)}
         className={`cursor-pointer select-none flex flex-col justify-between ${expanded ? 'items-start' : 'items-center'}`}
         animate={{
-          width: expanded ? '14vw' : '100%',
-          borderRadius: expanded ? '25px' : '50px',
-          x: isTransitioning ? -300 : 0,
+          width: expanded ? '16vw' : '100%',
+          borderRadius: expanded ? '25px' : '90px',
+          x: isTransitioning ? 50 : 0,
           opacity: isTransitioning ? 0 : 1,
           scale: isTransitioning ? 1.2 : 1,
         }}
@@ -102,7 +110,7 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
                 <div
                   className="flex-shrink-0 aspect-square rounded-full flex items-center justify-center shadow-sm"
                   style={{
-                    width: 'min(55cqw, 12cqh)',
+                    width: 'min(62cqw, 14cqh)',
                     background: p.color,
                   }}
                 >
@@ -141,56 +149,125 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         </div>
       </motion.div>
 
-      {/* BOTONES DE NAVEGACIÓN Y UTILIDADES */}
-      <div className={`flex flex-wrap gap-[2cqw] w-full h-[25%] items-center ${expanded ? 'justify-start px-2' : 'justify-center'}`}>
-        {UTILS.map((u) => {
-          if (u.href) {
-            return (
-              <Link key={u.id} href={u.href} className="block">
-                <motion.div
-                  animate={{
-                    x: isTransitioning ? -300 : 0,
-                    opacity: isTransitioning ? 0 : 1,
-                    scale: isTransitioning ? 1.2 : 1,
-                  }}
-                  transition={sidebarTransition}
-                  className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20"
-                  style={{
-                    width: 'min(80cqw, 22cqh)',
-                    background: u.color,
-                    willChange: 'transform, opacity',
-                  }}
-                  title={u.label}
-                >
-                  {renderIcon(u.id)}
-                </motion.div>
-              </Link>
-            );
-          }
-
-          return (
-            <motion.button
-              key={u.id}
-              onClick={onOpenProfile}
-              animate={{
-                x: isTransitioning ? -300 : 0,
-                opacity: isTransitioning ? 0 : 1,
-                scale: isTransitioning ? 1.2 : 1,
-              }}
-              transition={sidebarTransition}
-              className="aspect-square rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md border border-white/20"
-              style={{
-                width: 'min(80cqw, 22cqh)',
-                background: u.color,
-                willChange: 'transform, opacity',
-              }}
-              title={u.label}
+      {/* PASTILLA HORIZONTAL UNIFICADA DE CONFIGURACIÓN Y UTILIDADES */}
+      <motion.div
+        animate={{
+          x: isTransitioning ? -300 : 0,
+          opacity: isTransitioning ? 0 : 1,
+          scale: isTransitioning ? 1.2 : 1,
+        }}
+        transition={sidebarTransition}
+        className="relative z-40 w-full h-12 mt-3 flex justify-center"
+        style={{ willChange: 'transform, opacity' }}
+      >
+        {/*
+          Contenedor #D9D9D9 unificado:
+          - En estado colapsado: Es un círculo perfecto (48px x 48px) centrado horizontalmente al 50% X.
+          - En estado desplegado: Se expande horizontalmente a la derecha manteniendo su borde izquierdo en calc(50%-24px).
+          - En ambos estados el centro del botón (engranaje y >) coincide al 100% en X=50% y Y=24px.
+        */}
+        <motion.div
+          layout
+          transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+          className={`h-12 bg-[#D9D9D9] rounded-full flex items-center shadow-md border border-black/10 overflow-hidden whitespace-nowrap z-50 ${isConfigOpen ? 'absolute left-[calc(50%-24px)] top-0 py-1.5 pr-1.5 pl-[10px]' : 'relative w-12 justify-center p-1.5'
+            }`}
+        >
+          {/* BOTÓN UNIFICADO ACTIVADOR / COLAPSADOR QUE GIRA Y CONVIERTE SU ÍCONO */}
+          <motion.button
+            layout
+            onClick={handleConfigClick}
+            animate={{
+              backgroundColor: isConfigOpen ? '#B3B3B3' : '#4B5563',
+            }}
+            transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer shadow-md border border-white/20 transition-transform active:scale-95 z-10"
+            title={isConfigOpen ? 'Colapsar navegación' : 'Desplegar navegación'}
+          >
+            <motion.div
+              animate={{ rotate: gearRotation }}
+              transition={{ duration: 0.6, ease: [0.25, 0.8, 0.25, 1] }}
+              className="w-full h-full flex items-center justify-center relative origin-center"
             >
-              {renderIcon(u.id)}
-            </motion.button>
-          );
-        })}
-      </div>
+              {/* Ícono de engranaje (Configuración) - Se desvanece suavemente durante el giro */}
+              <motion.div
+                animate={{ opacity: isConfigOpen ? 0 : 1 }}
+                transition={{ duration: 0.4, ease: 'easeInOut' }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none origin-center"
+              >
+                {renderIcon('settings')}
+              </motion.div>
+
+              {/* Símbolo > (Chevron) - Centrado geométricamente en el medio del botón */}
+              <motion.div
+                animate={{ opacity: isConfigOpen ? 1 : 0 }}
+                transition={{ duration: 0.4, ease: 'easeInOut' }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none origin-center"
+              >
+                <svg
+                  className="w-5 h-5 text-black"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 7l5 5-5 5" />
+                </svg>
+              </motion.div>
+            </motion.div>
+          </motion.button>
+
+          {/* ÍCONOS DESPLEGABLES DENTRO DE LA PASTILLA QUE SURGEN CON EL EXPAND DE LA BARRA */}
+          <AnimatePresence>
+            {isConfigOpen && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 'auto', opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+                className="flex items-center gap-2 pl-3 pr-0.5 overflow-hidden flex-nowrap"
+              >
+                {UTILS.map((u) => {
+                  const iconElement = (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm flex-shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                      style={{ background: u.color }}
+                      title={u.label}
+                    >
+                      {renderIcon(u.id)}
+                    </motion.div>
+                  );
+
+                  if (u.href) {
+                    return (
+                      <Link key={u.id} href={u.href} className="block flex-shrink-0" title={u.label}>
+                        {iconElement}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        if (onOpenProfile) onOpenProfile();
+                      }}
+                      title={u.label}
+                      className="cursor-pointer border-none bg-transparent p-0 outline-none flex-shrink-0"
+                    >
+                      {iconElement}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
+

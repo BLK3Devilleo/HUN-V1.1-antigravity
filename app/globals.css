@@ -1,3 +1,4 @@
+@import url('https://fonts.cdnfonts.com/css/telegraf');
 @import "tailwindcss";
 
 /* ============================================
@@ -37,7 +38,7 @@
 @theme inline {
   --color-background: var(--nuh-bg);
   --color-foreground: var(--nuh-text-primary);
-  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-sans: 'Telegraf', 'Inter', system-ui, sans-serif;
   --font-display: var(--font-barlow-semi-condensed), 'Barlow Semi Condensed', sans-serif;
 }
 
@@ -60,7 +61,7 @@ body {
 body {
   background: var(--nuh-bg);
   color: var(--nuh-text-primary);
-  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+  font-family: 'Telegraf', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
