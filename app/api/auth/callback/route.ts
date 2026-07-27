@@ -3,8 +3,15 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 function getSafeOrigin(request: Request): string {
-  if (process.env.NODE_ENV === 'development') {
-    return new URL(request.url).origin;
+  const requestUrl = new URL(request.url);
+  if (requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1') {
+    return requestUrl.origin;
+  }
+
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    return `${proto}://${host}`;
   }
 
   const appUrlEnv = process.env.NEXT_PUBLIC_APP_URL;
@@ -12,17 +19,12 @@ function getSafeOrigin(request: Request): string {
     return appUrlEnv;
   }
 
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const proto = request.headers.get('x-forwarded-proto') || 'https';
-  
-  // Filtrar hosts inválidos de Docker (0.0.0.0 o IDs hexadecimales de contenedor de 12 caracteres como f457a25992bd)
-  const isInternalDockerHost = !host || host.includes('0.0.0.0') || /^[a-f0-9]{12}/i.test(host.split(':')[0]);
-
-  if (host && !isInternalDockerHost) {
+  if (host) {
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
     return `${proto}://${host}`;
   }
 
-  return 'https://autom.filocentraldemando.site';
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 }
 
 export async function GET(request: Request) {

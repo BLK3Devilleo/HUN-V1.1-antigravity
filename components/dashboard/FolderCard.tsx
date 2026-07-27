@@ -28,15 +28,18 @@ export default function FolderCard({ title, children, className = '', onClick }:
 
       {/* Cuerpo Principal Blanco */}
       <div
-        className="relative z-10 w-full flex-1 bg-white flex flex-col pt-[16px] pl-[10px] pr-5 pb-5"
+        className="relative z-10 w-full flex-1 bg-white flex flex-col pb-4"
         style={{
           marginTop: '13px', /* Justo debajo de la pestaña, superponiendo un píxel para que no haya línea */
-          borderRadius: '0 16px 16px 16px'
+          borderRadius: '0 16px 16px 16px',
+          paddingTop: '2vh',
+          paddingLeft: '1.4vw',
+          paddingRight: '1.4vw',
         }}
       >
-        {/* Título: Texto en Mayúsculas */}
-        <div className="flex items-center mb-3">
-          <span className="text-[11px] font-extrabold text-[#000000] tracking-tight uppercase leading-none">
+        {/* Título: Texto en Mayúsculas despegado del borde superior */}
+        <div className="flex items-center mb-2">
+          <span className="text-[15px] font-normal text-[#000000] tracking-tight leading-none">
             {title}
           </span>
         </div>

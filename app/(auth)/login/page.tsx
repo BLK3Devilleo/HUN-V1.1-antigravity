@@ -23,7 +23,14 @@ function LoginContent() {
     setLoading(true);
     setError(null);
     try {
-      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/api/auth/callback`;
+      const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isLocalHost) {
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const redirectUrl = `${origin}/api/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
