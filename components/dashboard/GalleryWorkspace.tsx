@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Image as ImageIcon, Video, Layers, Plus, ExternalLink, X, FolderOpen } from 'lucide-react';
 
 export interface MediaItem {
@@ -83,11 +84,15 @@ export default function GalleryWorkspace({ initialItems }: { initialItems: Media
 
       {/* Estado Vacío / Grid Bento */}
       {filteredItems.length === 0 ? (
-        <div className="bg-[#D9D9D9] border border-black/5 rounded-[28px] p-12 sm:p-16 text-center space-y-4 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#D9D9D9] border border-black/10 rounded-[28px] p-12 sm:p-16 text-center space-y-4 shadow-sm"
+        >
           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto shadow-sm">
             <FolderOpen className="w-8 h-8 text-black/60" />
           </div>
-          <h3 className="text-2xl font-black text-black tracking-tight uppercase">
+          <h3 className="nuh-title text-2xl font-black text-black tracking-tight uppercase">
             Tu Galería está Vacía
           </h3>
           <p className="text-xs text-[#666666] max-w-md mx-auto font-medium leading-relaxed">
@@ -102,15 +107,28 @@ export default function GalleryWorkspace({ initialItems }: { initialItems: Media
               <span>Ir a Subir Archivos</span>
             </Link>
           </div>
-        </div>
+        </motion.div>
       ) : (
-        /* Bento Grid Layout de Archivos */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        /* Bento Grid Layout de Archivos Animado */
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: { opacity: 0 },
+            show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+          }}
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"
+        >
           {filteredItems.map((item) => (
-            <div
+            <motion.div
               key={item.id}
+              variants={{
+                hidden: { opacity: 0, y: 15, scale: 0.96 },
+                show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3 } },
+              }}
+              whileHover={{ y: -4, scale: 1.02 }}
               onClick={() => setSelectedItem(item)}
-              className="group relative bg-[#D9D9D9] border border-black/10 rounded-[24px] p-3 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+              className="group relative bg-[#D9D9D9] border border-black/10 rounded-[24px] p-3 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between"
             >
               <div className="relative w-full aspect-square bg-black/10 rounded-[18px] overflow-hidden mb-3">
                 {isVideo(item.media_url) ? (
@@ -151,9 +169,9 @@ export default function GalleryWorkspace({ initialItems }: { initialItems: Media
                 </div>
                 <ExternalLink className="w-4 h-4 text-black/40 group-hover:text-black flex-shrink-0 transition-colors" />
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Modal Previsualizador Bento */}

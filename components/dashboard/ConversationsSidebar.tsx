@@ -27,7 +27,7 @@ interface ConversationsSidebarProps {
   activeConversationId?: string | null;
 }
 
-const DEFAULT_PROJECTS = [
+const DEFAULT_MOCK_PROJECTS = [
   {
     id: 'org-1',
     name: 'Organización número 1',
@@ -201,7 +201,7 @@ export default function ConversationsSidebar({
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
               className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 p-2 z-50 flex flex-col gap-1 shadow-lg"
             >
-              {DEFAULT_PROJECTS.map((proj) => (
+              {projects.map((proj) => (
                 <button
                   key={proj.id}
                   onClick={() => handleOrgChange(proj.id)}

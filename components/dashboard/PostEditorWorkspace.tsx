@@ -1337,8 +1337,10 @@ export default function PostEditorWorkspace({
         </motion.div>
 
         {/* Pila vertical de botones redondos */}
-        <div className="flex flex-col gap-2">
+        {/* Pila vertical de botones redondos */}
+        <div className="flex flex-col gap-2 relative">
           <button
+            onClick={() => setIsCalendarOpen(true)}
             className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
             title="Programar publicación de esta variación"
           >
@@ -1358,25 +1360,116 @@ export default function PostEditorWorkspace({
           </button>
 
           <button
-            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+            onClick={() => handlePublish(false)}
+            disabled={isPublishing}
+            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
             title="Confirmar y publicar esta variación"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+            {isPublishing ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>
+
+      {/* TOAST FEEDBACK FLOATING */}
+      <AnimatePresence>
+        {statusMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-bold shadow-xl border flex items-center gap-3 ${
+              statusType === 'error'
+                ? 'bg-red-600 text-white border-red-500'
+                : 'bg-black text-white border-black/20'
+            }`}
+          >
+            <span>{statusMessage}</span>
+            <button
+              onClick={() => setStatusMessage(null)}
+              className="text-white/80 hover:text-white font-black text-sm"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL INTERACTIVO DE CALENDARIO Y PROGRAMACIÓN */}
+      {isCalendarOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <h3 className="text-base font-extrabold text-black tracking-tight">
+                🗓️ Programar Variación #{activeBlock.number}
+              </h3>
+              <button
+                onClick={() => setIsCalendarOpen(false)}
+                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-black flex items-center justify-center font-bold text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Fecha de publicación
+                </label>
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-black"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Hora de publicación
+                </label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-black"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-3 border-t border-gray-100">
+              <button
+                onClick={() => setIsCalendarOpen(false)}
+                className="px-4 py-2.5 rounded-full text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-black transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handlePublish(true)}
+                disabled={isPublishing}
+                className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#38BDF8] hover:bg-[#0284C7] text-white transition-all shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isPublishing ? 'Guardando...' : 'Confirmar Programación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

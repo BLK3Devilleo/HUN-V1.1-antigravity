@@ -95,10 +95,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(getSafeRedirectUrl('/login'));
   }
 
+  // ✅ FIX C-1: Accept both naming conventions for the service role key.
+  // Some .env files use SUPABASE_SERVICE_ROLE_KEY, others SUPABASE_CENTRAL_SERVICE_ROLE_KEY.
+  const serviceRoleKey =
+    process.env.SUPABASE_CENTRAL_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceRoleKey) {
+    console.error('[Proxy] FATAL: No service role key found. Set SUPABASE_CENTRAL_SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE_KEY.');
+    return NextResponse.redirect(getSafeRedirectUrl('/login', 'access_denied'));
+  }
+
   // Validación de base de datos usando Service Role Key
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.SUPABASE_CENTRAL_SERVICE_ROLE_KEY!,
+    serviceRoleKey,
     {
       auth: {
         persistSession: false,
@@ -135,5 +146,5 @@ export async function proxy(request: NextRequest) {
 export const middleware = proxy;
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)'],
 };
