@@ -12,7 +12,7 @@ export default async function AdminPage() {
 
   if (userRole !== 'owner' && userRole !== 'admin' && userRole !== 'moderator') {
     return (
-      <div className="min-h-screen bg-[#F2F2F2] flex items-center justify-center p-6 text-black font-sans">
+      <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center p-6 text-black font-sans">
         <div className="bg-[#D9D9D9] border border-black/10 rounded-[32px] p-8 max-w-md w-full text-center shadow-xl space-y-4">
           <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mx-auto text-rose-600">
             <ShieldAlert className="w-8 h-8" />
@@ -56,7 +56,7 @@ export default async function AdminPage() {
     .limit(100); // ✅ FIX W-4: prevent unlimited fetch on large orgs
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2] text-black p-4 sm:p-6 md:p-10 font-sans">
+    <div className="min-h-screen bg-[#F6F6F6] text-black p-4 sm:p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Navigation Bar */}

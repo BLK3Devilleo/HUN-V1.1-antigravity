@@ -45,6 +45,7 @@ function LoginContent() {
   };
 
   return (
+<<<<<<< HEAD
     <motion.div
       initial={{ opacity: 0, scale: 0.92, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -128,8 +129,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#F2F2F2] flex items-center justify-center p-4 sm:p-6 md:p-10 font-sans relative overflow-hidden">
-      {/* Elementos flotantes 3D de fondo */}
+    <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center p-4 sm:p-6 md:p-10 font-sans relative overflow-hidden">
       <motion.div
         animate={{ y: [0, -12, 0], rotate: [0, 2, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}

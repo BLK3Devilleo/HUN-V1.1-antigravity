@@ -169,7 +169,7 @@ export default function SocialSidebar({ isTransitioning = false, onOpenProfile }
         <motion.div
           layout
           transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
-          className={`h-12 bg-[#D9D9D9] rounded-full flex items-center shadow-md border border-black/10 overflow-hidden whitespace-nowrap z-50 ${isConfigOpen ? 'absolute left-[calc(50%-24px)] top-0 py-1.5 pr-1.5 pl-[10px]' : 'relative w-12 justify-center p-1.5'
+          className={`h-13 bg-[#D9D9D9] rounded-full flex items-center shadow-md border border-black/10 overflow-hidden whitespace-nowrap z-50 ${isConfigOpen ? 'absolute left-[calc(50%-24px)] top-0 py-1.5 pr-1.5 pl-[10px]' : 'relative w-13 justify-center p-1.5'
             }`}
         >
           {/* BOTÓN UNIFICADO ACTIVADOR / COLAPSADOR QUE GIRA Y CONVIERTE SU ÍCONO */}

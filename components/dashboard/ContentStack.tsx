@@ -15,8 +15,8 @@ export default function ContentStack() {
       {/* =========================================================
           TÍTULO ESTÁTICO DE LA SECCIÓN (Independiente de la animación)
           ========================================================= */}
-      <div className="flex items-center mb-3 z-40 pl-1">
-        <span className="text-[11px] font-extrabold text-[#000000] tracking-tight uppercase leading-none">
+      <div className="flex items-center z-40 pl-1" style={{ marginBottom: '1.6vh', marginLeft: '0.4vw' }}>
+        <span className="text-[2.4vh] font-[500] text-[#000000] tracking-tight leading-none">
           Contenidos
         </span>
       </div>
@@ -30,7 +30,7 @@ export default function ContentStack() {
         className="relative"
         style={{
           width: '16.1458vw',
-          height: '33.0556vh',
+          height: '35vh',
         }}
       >
         {/* CARTA 3 (Posterior): Oculta por defecto. Scale 0.64 (20% menos que Carta 2), Rotación 10° */}
@@ -39,7 +39,7 @@ export default function ContentStack() {
           initial={false}
           animate={{
             opacity: isHovered ? 1 : 0,
-            scale: isHovered ? 0.64 : 1,
+            scale: isHovered ? 0.7 : 1,
             rotate: isHovered ? 10 : 0,
           }}
           transition={{ duration: 0.25, ease: [0.25, 0.8, 0.25, 1] as const }}
@@ -57,7 +57,7 @@ export default function ContentStack() {
           initial={false}
           animate={{
             opacity: isHovered ? 1 : 0,
-            scale: isHovered ? 0.8 : 1,
+            scale: isHovered ? .9 : 1,
             rotate: isHovered ? 5 : 0,
           }}
           transition={{ duration: 0.25, ease: [0.25, 0.8, 0.25, 1] as const }}
@@ -84,7 +84,7 @@ export default function ContentStack() {
           }}
         >
           {/* Cuerpo / Previsualización interna de la card */}
-          <div className="flex-1 w-full bg-[#F2F2F2] rounded-xl border border-black/5 p-3 flex flex-col justify-between select-none">
+          <div className="flex-1 w-full bg-[#F6F6F6] rounded-xl border border-black/5 p-3 flex flex-col justify-between select-none">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-[#666666] uppercase tracking-wider">
                 Publicación #01
