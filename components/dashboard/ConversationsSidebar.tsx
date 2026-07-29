@@ -74,7 +74,7 @@ export default function ConversationsSidebar({
   const [activePostId, setActivePostId] = useState('1');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const activeOrg = DEFAULT_PROJECTS.find((p) => p.id === currentOrgId) || DEFAULT_PROJECTS[0];
+  const activeOrg = DEFAULT_MOCK_PROJECTS.find((p: { id: string }) => p.id === currentOrgId) || DEFAULT_MOCK_PROJECTS[0];
   const displayPosts = projectsList || conversationsList || activeOrg.posts;
   const currentActiveId = activeProjectId !== undefined ? activeProjectId : activeConversationId;
   const handleCreateNew = onNewProjectClick || onNewPostClick;
@@ -118,7 +118,7 @@ export default function ConversationsSidebar({
 
           {/* 3. Lista de Proyectos */}
           <div className="w-[80%] h-[20vh]flex flex-col gap-2 overflow-y-auto max-h-[30vh] scrollbar-none pr-1 pl-6">
-            {displayPosts.map((post) => {
+            {displayPosts.map((post: { id: string; title: string }) => {
               const isSelected = currentActiveId ? post.id === currentActiveId : false;
               return (
                 <div
@@ -201,7 +201,7 @@ export default function ConversationsSidebar({
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
               className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 p-2 z-50 flex flex-col gap-1 shadow-lg"
             >
-              {projects.map((proj) => (
+              {DEFAULT_MOCK_PROJECTS.map((proj: { id: string; name: string; posts: any[] }) => (
                 <button
                   key={proj.id}
                   onClick={() => handleOrgChange(proj.id)}

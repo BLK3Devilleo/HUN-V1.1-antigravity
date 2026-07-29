@@ -37,4 +37,3 @@ export default async function GalleryPage() {
 
   return <GalleryWorkspace initialItems={galleryItems} />;
 }
-}

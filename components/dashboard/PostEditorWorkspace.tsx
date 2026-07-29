@@ -168,6 +168,40 @@ export default function PostEditorWorkspace({
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState<boolean>(false);
 
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusType, setStatusType] = useState<'success' | 'error'>('success');
+
+  const handlePublish = async (isScheduled: boolean = false) => {
+    setIsPublishing(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      if (isScheduled && (!scheduledDate || !scheduledTime)) {
+        setStatusType('error');
+        setStatusMessage('Por favor selecciona fecha y hora para programar.');
+        setIsPublishing(false);
+        return;
+      }
+      setStatusType('success');
+      setStatusMessage(
+        isScheduled
+          ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
+          : `Variación #${activeBlock.number} publicada con éxito.`
+      );
+      if (isScheduled) {
+        setIsCalendarOpen(false);
+      }
+    } catch {
+      setStatusType('error');
+      setStatusMessage('Ocurrió un error al procesar la publicación.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const activeBlock =
     variationBlocks.find((b) => b.id === activeBlockId) ||
     variationBlocks[0] || {
