@@ -509,7 +509,6 @@ export default function DashboardPage() {
               top: '4.1vh',
               right: '2.3vw',
               width: '18.2vw',
-              height: '43vh',
               willChange: 'transform, opacity',
             }}
           >
@@ -585,7 +584,7 @@ export default function DashboardPage() {
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
                       100
                     </p>
-                    <p className="text-xs font-semibold text-[#666666] mt-1">
+                    <p className="text-[2.4vh] font-[400] text-[#000000] -mt-1.5">
                       Nuevos
                     </p>
                   </div>

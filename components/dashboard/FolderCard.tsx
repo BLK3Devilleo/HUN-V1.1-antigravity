@@ -13,7 +13,7 @@ export default function FolderCard({ title, children, className = '', onClick }:
   return (
     <div
       onClick={onClick}
-      className={`relative w-full h-[20vh] flex flex-col ${onClick ? 'cursor-pointer transition-transform hover:scale-[1.03] active:scale-95' : ''} ${className}`}
+      className={`relative w-full h-[19vh] flex flex-col ${onClick ? 'cursor-pointer transition-transform hover:scale-[1.03] active:scale-95' : ''} ${className}`}
       style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.06))' }}
     >
       {/* Pestaña (Tab) Superior Blanca */}
@@ -24,7 +24,6 @@ export default function FolderCard({ title, children, className = '', onClick }:
           height: '7vh',
           width: '7vw',
           borderRadius: '10px 10px 0 0',
-          paddingBottom: '3vh',
         }}
       />
 
@@ -35,14 +34,14 @@ export default function FolderCard({ title, children, className = '', onClick }:
           backgroundColor: '#d9d9d9',
           marginTop: '13px', /* Justo debajo de la pestaña, superponiendo un píxel para que no haya línea */
           borderRadius: '0 16px 16px 16px',
-          paddingTop: '2vh',
+          paddingTop: '1.2vh',
           paddingLeft: '1.4vw',
           paddingRight: '1.4vw',
         }}
       >
         {/* Título: Texto de titulo de folder despegado del borde superior */}
-        <div className="flex items-center mb-2">
-          <span className="text-[15px] font-normal text-[#000000] tracking-tight leading-none">
+        <div className="flex items-center mb-1">
+          <span className="text-[2.4vh] font-normal text-[#000000] tracking-tight leading-none">
             {title}
           </span>
         </div>
