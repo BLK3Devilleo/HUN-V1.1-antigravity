@@ -283,7 +283,7 @@ export default function DashboardPage() {
           right: isEditorActive ? '2.2917vw' : '0vw',
           left: isEditorActive ? 'auto' : '0vw',
           width: isEditorActive ? 'auto' : '100%',
-          scale: isEditorActive ? 0.22 : 1,
+          scale: isEditorActive ? 0.28 : 1,
         }}
         transition={transitionProps}
         className={`absolute flex flex-col items-center z-30 ${isEditorActive
@@ -633,7 +633,7 @@ export default function DashboardPage() {
             <div
               className="absolute inset-x-0 flex justify-center pointer-events-none z-20"
               style={{
-                top: '16.5741vh',
+                top: '12.6vh',
                 bottom: '4.0741vh',
               }}
             >
@@ -643,7 +643,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8, y: 30 }}
                 transition={transitionProps}
-                className="pointer-events-auto flex flex-col items-center justify-between"
+                className="pointer-events-auto flex flex-col items-center justify-start"
                 style={{
                   width: '56.8229vw',
                   height: '100%',
