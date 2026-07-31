@@ -4,6 +4,10 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies, headers } from 'next/headers';
 
+function isUuid(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 function getAdminClient() {
   const serviceRoleKey =
     process.env.SUPABASE_CENTRAL_SERVICE_ROLE_KEY ||
@@ -49,8 +53,7 @@ export async function saveN8nWebhook(webhookUrl: string) {
 
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Obtener org_id y rol con fallback seguro desde cabeceras del proxy
-    let orgId = headerOrgId || 'org-1';
+    let rawOrgId = headerOrgId || 'org-1';
     let userRole = headerUserRole || 'admin';
 
     if (user) {
@@ -61,7 +64,7 @@ export async function saveN8nWebhook(webhookUrl: string) {
         .single();
 
       if (profile) {
-        orgId = profile.org_id;
+        rawOrgId = profile.org_id;
         userRole = profile.role;
       }
     }
@@ -70,18 +73,43 @@ export async function saveN8nWebhook(webhookUrl: string) {
       throw new Error('Solo los administradores o propietarios pueden configurar Webhooks');
     }
 
-    // Usar cliente Admin si está disponible para evitar bloqueos RLS
     const adminClient = getAdminClient();
     const dbClient = adminClient || supabase;
 
-    // Obtener settings actuales
-    const { data: orgData } = await dbClient
-      .from('organizations')
-      .select('settings')
-      .eq('id', orgId)
-      .single();
+    // Buscar el ID real de la organización (UUID)
+    let targetOrgId: string | null = null;
+    let currentSettings: any = {};
 
-    const currentSettings = orgData?.settings || {};
+    if (rawOrgId && isUuid(rawOrgId)) {
+      const { data: orgData } = await dbClient
+        .from('organizations')
+        .select('id, settings')
+        .eq('id', rawOrgId)
+        .maybeSingle();
+
+      if (orgData) {
+        targetOrgId = orgData.id;
+        currentSettings = orgData.settings || {};
+      }
+    }
+
+    // Fallback: Si rawOrgId no es UUID o no existía, usar la primera organización
+    if (!targetOrgId) {
+      const { data: firstOrg } = await dbClient
+        .from('organizations')
+        .select('id, settings')
+        .limit(1)
+        .maybeSingle();
+
+      if (firstOrg) {
+        targetOrgId = firstOrg.id;
+        currentSettings = firstOrg.settings || {};
+      }
+    }
+
+    if (!targetOrgId) {
+      throw new Error('No existe ninguna organización activa en la base de datos para asignar el Webhook.');
+    }
 
     // Actualizar webhook
     const newSettings = {
@@ -92,7 +120,7 @@ export async function saveN8nWebhook(webhookUrl: string) {
     const { error: updateError } = await dbClient
       .from('organizations')
       .update({ settings: newSettings })
-      .eq('id', orgId);
+      .eq('id', targetOrgId);
 
     if (updateError) {
       throw new Error(`Error al actualizar organización: ${updateError.message}`);
@@ -129,7 +157,7 @@ export async function getN8nWebhook() {
     );
 
     const { data: { user } } = await supabase.auth.getUser();
-    let orgId = headerOrgId || 'org-1';
+    let rawOrgId = headerOrgId || 'org-1';
 
     if (user) {
       const { data: profile } = await supabase
@@ -139,18 +167,31 @@ export async function getN8nWebhook() {
         .single();
 
       if (profile) {
-        orgId = profile.org_id;
+        rawOrgId = profile.org_id;
       }
     }
 
     const adminClient = getAdminClient();
     const dbClient = adminClient || supabase;
 
-    const { data: orgData } = await dbClient
-      .from('organizations')
-      .select('settings')
-      .eq('id', orgId)
-      .single();
+    let orgData = null;
+    if (rawOrgId && isUuid(rawOrgId)) {
+      const { data } = await dbClient
+        .from('organizations')
+        .select('settings')
+        .eq('id', rawOrgId)
+        .maybeSingle();
+      orgData = data;
+    }
+
+    if (!orgData) {
+      const { data } = await dbClient
+        .from('organizations')
+        .select('settings')
+        .limit(1)
+        .maybeSingle();
+      orgData = data;
+    }
 
     return { url: orgData?.settings?.n8n_webhook_url || '' };
   } catch (error) {
