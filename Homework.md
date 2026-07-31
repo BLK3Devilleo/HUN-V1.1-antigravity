@@ -34,8 +34,8 @@
 ### 2. 🎯 Tareas de Refactorización MVP Backend (Siguientes Pasos)
 - [ ] **Eliminación / Refactorización de BYODB**:
   - Eliminar referencias a funciones innecesarias como `connectByodb` en `app/actions/byodb.ts` (L114-L118) y simplificar el modelo para centrarse en el MVP directo.
-- [ ] **Middleware / Proxy en Next.js 16**:
-  - Crear `middleware.ts` en la raíz de `hunprod/` importando/ejecutando `proxy.ts` para que Next.js 16 intercepte correctamente las rutas protegidas.
+- [ ] **Proxy en Next.js 16 (`proxy.ts`)**:
+  - Asegurar la ejecución de `proxy.ts` como capa de red de Next.js 16 para interceptar correctamente las rutas protegidas.
   - Eliminar el bypass automático de autenticación en `localhost` en `proxy.ts` para garantizar la seguridad.
 - [ ] **Corrección del RLS en Supabase Central**:
   - Corregir recursión en la política `profile_org_admin_select` de `001_schema_central.sql`.
