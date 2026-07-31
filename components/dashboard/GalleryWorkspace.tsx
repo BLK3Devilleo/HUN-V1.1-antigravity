@@ -33,7 +33,7 @@ export default function GalleryWorkspace({ initialItems }: { initialItems: Media
   return (
     <div className="space-y-6">
       {/* Bento Toolbar: Filtros & Botón Crear estilo Don Emilio */}
-      <div className="bg-[#D9D9D9] border border-black/5 rounded-[24px] p-3 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+      <div className="bg-white border border-black/10 rounded-[24px] p-3 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setFilterType('all')}
