@@ -227,7 +227,7 @@ export default function ConversationsSidebar({
                     }`}
                 >
                   <span className="truncate">{proj.name}</span>
-                  <span className="text-[10px] opacity-60">({proj.posts.length})</span>
+                  <span className="text-[10px] opacity-60">({proj.posts?.length || 0})</span>
                 </button>
               ))}
             </motion.div>

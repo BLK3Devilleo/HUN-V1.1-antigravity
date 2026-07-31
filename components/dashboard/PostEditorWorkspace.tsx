@@ -167,6 +167,39 @@ export default function PostEditorWorkspace({
   const [postTitle, setPostTitle] = useState<string>(currentPostTitle);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState<boolean>(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusType, setStatusType] = useState<'success' | 'error'>('success');
+
+  const handlePublish = async (isScheduled: boolean) => {
+    setIsPublishing(true);
+    setStatusMessage(null);
+    try {
+      const { publishPostAction } = await import('@/app/actions/post');
+      const res = await publishPostAction({
+        title: postTitle,
+        caption: activeBlock.caption,
+        mediaUrls: activeBlock.thumbnails,
+        platforms: activeBlock.selectedPlatforms,
+      });
+      if (res.success) {
+        setStatusType('success');
+        setStatusMessage(isScheduled ? '¡Publicación programada exitosamente!' : '¡Publicación lanzada exitosamente!');
+        setIsCalendarOpen(false);
+      } else {
+        setStatusType('error');
+        setStatusMessage(res.error || 'Error al publicar.');
+      }
+    } catch (err: any) {
+      setStatusType('error');
+      setStatusMessage(err.message || 'Error al procesar la publicación.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
