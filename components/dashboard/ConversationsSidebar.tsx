@@ -74,7 +74,7 @@ export default function ConversationsSidebar({
   const [activePostId, setActivePostId] = useState('1');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const activeOrg = DEFAULT_MOCK_PROJECTS.find((p: any) => p.id === currentOrgId) || DEFAULT_MOCK_PROJECTS[0];
+  const activeOrg = DEFAULT_MOCK_PROJECTS.find((p: { id: string }) => p.id === currentOrgId) || DEFAULT_MOCK_PROJECTS[0];
   const displayPosts = projectsList || conversationsList || activeOrg.posts;
   const currentActiveId = activeProjectId !== undefined ? activeProjectId : activeConversationId;
   const handleCreateNew = onNewProjectClick || onNewPostClick;
@@ -93,51 +93,64 @@ export default function ConversationsSidebar({
   };
 
   return (
-    <div className="w-[16vw] min-w-[250px] max-w-[320px] h-[83vh] flex flex-col justify-between gap-4 select-none box-border">
+    <div className="w-[10vw] min-w-[230px] h-[83.1vh] flex flex-col justify-between gap-4 select-none box-border">
       {/* CONTENEDOR PRINCIPAL GRIS (#D9D9D9) */}
-      <div className="w-full flex-1 bg-[#D9D9D9] rounded-[24px] p-6 flex flex-col justify-between overflow-hidden shadow-sm box-border">
+      <div
+        className="w-full flex-1 bg-[#D9D9D9] rounded-[24px] flex flex-col justify-between overflow-hidden shadow-sm box-border"
+        style={{ paddingBottom: '4.5%' }}
+      >
         {/* BLOQUE SUPERIOR: TÍTULO, BOTÓN GALERÍA Y LISTA DE PROYECTOS */}
-        <div className="w-full flex flex-col gap-5">
-          {/* 1. Título de Organización */}
-          <div className="w-[90%] flex items-center justify-start pl-5 pr-2 pt-2 pb-1">
-            <h3 className="text-sm font-black text-black tracking-tight truncate">
+        <div className="w-full flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
+          {/* 1. Título de Organización despegado del borde izquierdo y superior */}
+          <div
+            className="w-full flex items-center justify-start shrink-0"
+            style={{
+              paddingTop: '1.5vh',   // Linea 103: Separación del borde superior
+              paddingLeft: '1.6vw',  // Linea 104: Separación del borde izquierdo
+              paddingRight: '1vw',
+            }}
+          >
+            <h3 className="text-[2hv] font-[400] text-black tracking-tight truncate">
               {activeOrg.name}
             </h3>
           </div>
 
           {/* 2. Botón Galería de Medios */}
-          <div className="w-full flex justify-center">
+          <div className="w-full flex justify-center shrink-0">
             <Link
               href="/dashboard/gallery"
-              className="w-[90%] h-[4vh] py-2.5 px-4 rounded-[25px] bg-white hover:bg-black hover:text-white text-black text-xs font-extrabold transition-all shadow-xs flex items-center justify-center gap-2 group cursor-pointer"
+              className="w-[90%] h-[4vh] py-2.5 px-4 rounded-[25px] bg-white hover:bg-black hover:text-white text-black text-xs font-extrabold transition-all shadow-xs flex items-center justify-center gap-1 group cursor-pointer"
             >
               <span>🖼️ Ver Galería de Medios</span>
               <span className="text-sm group-hover:translate-x-0.5 transition-transform">→</span>
             </Link>
           </div>
 
-          {/* 3. Lista de Proyectos */}
-          <div className="w-[80%] h-[20vh]flex flex-col gap-2 overflow-y-auto max-h-[30vh] scrollbar-none pr-1 pl-6">
-            {displayPosts.map((post: any) => {
+          {/* 3. Lista de Proyectos: Ocupa el alto hasta + Crear nuevo, scroll activo sólo si hay > 10 proyectos */}
+          <div
+            className={`w-full flex flex-col items-center gap-1 scrollbar-none py-1 flex-1 min-h-0 ${displayPosts.length > 10 ? 'overflow-y-auto' : 'overflow-y-hidden'
+              }`}
+          >
+            {displayPosts.map((post: { id: string; title: string }) => {
               const isSelected = currentActiveId ? post.id === currentActiveId : false;
               return (
                 <div
                   key={post.id}
                   onClick={() => handlePostClick(post)}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 min-h-[46px] rounded-xl cursor-pointer transition-all ${isSelected
-                    ? 'bg-black/10 font-black text-black shadow-xs'
-                    : 'text-[#333333] hover:text-black hover:bg-black/5 font-bold'
+                  className={`w-[90%] flex items-center justify-between pl-4.5 pr-3 py-2 min-h-[7%] rounded-xl cursor-pointer transition-all mx-auto shrink-0 ${isSelected
+                    ? 'bg-black/10 font-[600] text-black shadow-xs'
+                    : 'text-[#333333] hover:text-black hover:bg-black/5 font-[500]'
                     }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     <svg
-                      className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-black' : 'text-[#666666]'}`}
+                      className={`w-[4.2vh] h-[3.2vh] min-w-[18px] min-h-[18px] flex-shrink-0 ml-0.5 ${isSelected ? 'text-black' : 'text-[#666666]'}`}
                       fill="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
                     </svg>
-                    <span className="text-[13px] truncate flex-1 min-w-0" title={post.title}>
+                    <span className="text-[1.8vh] truncate flex-1 min-w-0" title={post.title}>
                       {post.title}
                     </span>
                   </div>
@@ -162,15 +175,15 @@ export default function ConversationsSidebar({
           </div>
         </div>
 
-        {/* BLOQUE INFERIOR: BOTÓN + CREAR NUEVO */}
-        <div className="w-full flex justify-center pt-2 pb-1">
+        {/* BLOQUE INFERIOR: BOTÓN + CREAR NUEVO (Anclado a la base inferior con items-end para que su altura crezca hacia arriba) */}
+        <div className="w-full flex items-end justify-center shrink-0">
           <button
             onClick={() => {
               if (handleCreateNew) handleCreateNew();
             }}
-            className="w-full py-3 px-4 rounded-2xl bg-[#BFBFBF] hover:bg-[#B3B3B3] text-black text-xs font-extrabold transition-all active:scale-95 text-center cursor-pointer shadow-sm"
+            className="w-[90%] h-[5.5vh] px-4 rounded-[13px] bg-[#BFBFBF] hover:bg-[#B3B3B3] text-[#292929] text-[2.3vh] font-[600] transition-all active:scale-95 text-center cursor-pointer shadow-sm mx-auto flex items-center justify-center"
           >
-            + Crear nuevo
+            Crear nuevo
           </button>
         </div>
       </div>
@@ -179,14 +192,19 @@ export default function ConversationsSidebar({
       <div className="relative w-full h-[10vh]">
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full h-[6vh] flex items-center justify-between pl-14 pr-5 py-3.5 rounded-full text-xs font-extrabold bg-[#D9D9D9] hover:bg-[#CFCFCF] text-black transition-all active:scale-95 shadow-sm"
+          className="w-full h-[6vh] flex items-center justify-between rounded-full text-[2.4vh] font-[400] bg-[#D9D9D9] hover:bg-[#CFCFCF] text-black transition-all active:scale-95 shadow-sm"
+          style={{
+            paddingLeft: '1.2vw',   // Linea 190: Separación del borde izquierdo de la píldora
+            paddingRight: '1.2vw',
+            paddingTop: '0.4vh',    // Linea 192: Separación superior de la píldora
+          }}
         >
-          <span className="truncate pr-2">{activeOrg.name}</span>
+          <span className="truncate max-w-[84%] pr-2">{activeOrg.name}</span>
           <svg
-            className={`w-4 h-4 opacity-70 flex-shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''
+            className={`w-6 h-6 opacity-70 flex-shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''
               }`}
             fill="none"
-            viewBox="0 0 24 24"
+            viewBox="0 0 25 25"
             stroke="currentColor"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
@@ -201,7 +219,7 @@ export default function ConversationsSidebar({
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
               className="absolute bottom-14 left-0 w-full bg-white rounded-2xl border border-black/10 p-2 z-50 flex flex-col gap-1 shadow-lg"
             >
-              {(DEFAULT_MOCK_PROJECTS || []).map((proj: any) => (
+              {DEFAULT_MOCK_PROJECTS.map((proj: { id: string; name: string; posts: any[] }) => (
                 <button
                   key={proj.id}
                   onClick={() => handleOrgChange(proj.id)}

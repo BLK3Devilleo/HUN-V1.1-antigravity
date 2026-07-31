@@ -177,7 +177,7 @@ export default function GalleryWorkspace({ initialItems }: { initialItems: Media
       {/* Modal Previsualizador Bento */}
       {selectedItem && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#F2F2F2] rounded-[28px] max-w-2xl w-full overflow-hidden shadow-2xl border border-black/10 animate-in fade-in zoom-in duration-200">
+          <div className="bg-[#F6F6F6] rounded-[28px] max-w-2xl w-full overflow-hidden shadow-2xl border border-black/10 animate-in fade-in zoom-in duration-200">
             {/* Header Modal */}
             <div className="flex items-center justify-between p-6 bg-[#D9D9D9] border-b border-black/5">
               <div>

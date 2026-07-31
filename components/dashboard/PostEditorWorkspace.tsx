@@ -201,6 +201,74 @@ export default function PostEditorWorkspace({
     }
   };
 
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusType, setStatusType] = useState<'success' | 'error'>('success');
+
+  // Estado y funciones del Calendario 1:1
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+
+  const SPANISH_MONTHS = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const calendarYear = calendarViewDate.getFullYear();
+  const calendarMonth = calendarViewDate.getMonth();
+  const calendarMonthName = SPANISH_MONTHS[calendarMonth];
+
+  const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+  const handlePrevMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCalendarViewDate(new Date(calendarYear, calendarMonth - 1, 1));
+  };
+
+  const handleNextMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCalendarViewDate(new Date(calendarYear, calendarMonth + 1, 1));
+  };
+
+  const isSelectedDay = (dayNum: number) => {
+    return (
+      selectedCalendarDate.getDate() === dayNum &&
+      selectedCalendarDate.getMonth() === calendarMonth &&
+      selectedCalendarDate.getFullYear() === calendarYear
+    );
+  };
+
+  const handlePublish = async (isScheduled: boolean = false) => {
+    setIsPublishing(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      if (isScheduled && (!scheduledDate || !scheduledTime)) {
+        setStatusType('error');
+        setStatusMessage('Por favor selecciona fecha y hora para programar.');
+        setIsPublishing(false);
+        return;
+      }
+      setStatusType('success');
+      setStatusMessage(
+        isScheduled
+          ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
+          : `Variación #${activeBlock.number} publicada con éxito.`
+      );
+      if (isScheduled) {
+        setIsCalendarOpen(false);
+      }
+    } catch {
+      setStatusType('error');
+      setStatusMessage('Ocurrió un error al procesar la publicación.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const activeBlock =
     variationBlocks.find((b) => b.id === activeBlockId) ||
     variationBlocks[0] || {
@@ -784,9 +852,8 @@ export default function PostEditorWorkspace({
                           top: `${topPercent}%`,
                           transform: 'translateY(-50%)',
                         }}
-                        className={`absolute inset-x-0 flex items-center justify-center z-10 ${
-                          isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
-                        }`}
+                        className={`absolute inset-x-0 flex items-center justify-center z-10 ${isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
+                          }`}
                         title={
                           isBlocked
                             ? `${plat.name} (Asignada a otra variación con los mismos archivos)`
@@ -794,13 +861,12 @@ export default function PostEditorWorkspace({
                         }
                       >
                         <div
-                          className={`flex items-center justify-center transition-colors ${
-                            isSel
-                              ? 'text-white font-bold'
-                              : isBlocked
+                          className={`flex items-center justify-center transition-colors ${isSel
+                            ? 'text-white font-bold'
+                            : isBlocked
                               ? 'text-[#999999] opacity-40 font-normal'
                               : 'text-[#666666] hover:text-[#333333] font-semibold'
-                          }`}
+                            }`}
                         >
                           {plat.id === 'facebook' && (
                             <span className="text-xl font-black font-sans leading-none">f</span>
@@ -848,15 +914,14 @@ export default function PostEditorWorkspace({
     activeMediaUrl.endsWith('.mkv') ||
     activeMediaUrl.includes('video');
 
-  // Elevación vertical independiente para vista de video e imagen (sube título y tarjetas)
-  const videoTopMargin = '-mt-[8.5vh]';
-  const imageTopMargin = '-mt-[8.5vh]';
+  // Elevación vertical manejada por el contenedor padre a top: 12.6vh
+  const videoTopMargin = '';
+  const imageTopMargin = '';
 
   return (
     <div
-      className={`flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative ${
-        isVideo ? videoTopMargin : imageTopMargin
-      }`}
+      className={`flex flex-col items-center justify-start gap-[1.2037vh] w-full select-none relative ${isVideo ? videoTopMargin : imageTopMargin
+        }`}
     >
       <input
         type="file"
@@ -867,51 +932,53 @@ export default function PostEditorWorkspace({
         className="hidden"
       />
 
-      {/* TÍTULO SUPERIOR CENTRADO EDITABLE CON INDICADOR DE BLOQUE ACTIVO */}
-      <div className="flex items-center gap-2 mb-1">
-        {isEditingTitle ? (
-          <input
-            type="text"
-            value={postTitle}
-            onChange={(e) => setPostTitle(e.target.value)}
-            onBlur={handleSaveTitle}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveTitle();
-            }}
-            autoFocus
-            className="text-sm font-bold text-black border-b border-black outline-none bg-transparent text-center px-2 py-0.5"
-          />
-        ) : (
-          <h2
-            onClick={() => setIsEditingTitle(true)}
-            className="text-sm font-bold text-black tracking-tight text-center cursor-pointer hover:opacity-75 flex items-center gap-1.5 group"
-            title="Haz clic para editar el nombre del proyecto"
-          >
-            <span>{postTitle}</span>
-            <svg
-              className="w-3.5 h-3.5 text-gray-400 group-hover:text-black transition-colors"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+      {/* TÍTULO SUPERIOR CENTRADO EDITABLE EN UNA SOLA LÍNEA (Mantiene la huella original en flujo normal + crece hacia arriba desde bottom-0) */}
+      <div className="flex items-center justify-center gap-2 mb-1 h-6 relative w-full">
+        <div className="absolute bottom-0 flex items-center justify-center gap-2 whitespace-nowrap">
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveTitle();
+              }}
+              autoFocus
+              className="text-[2.4vh] font-[400] text-black border-b border-black outline-none bg-transparent text-center px-2 py-0.5 whitespace-nowrap shrink-0"
+            />
+          ) : (
+            <h2
+              onClick={() => setIsEditingTitle(true)}
+              className="text-[2.4vh] font-[400] text-black tracking-tight text-center cursor-pointer hover:opacity-75 flex items-center gap-1.5 group whitespace-nowrap shrink-0"
+              title="Haz clic para editar el nombre del proyecto"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </h2>
-        )}
-        <span className="text-[11px] font-black bg-black text-white px-2.5 py-0.5 rounded-full">
-          Variación {activeBlock.number}
-        </span>
+              <span className="whitespace-nowrap">{postTitle}</span>
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-black transition-colors shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </h2>
+          )}
+          <span className="text-[11px] font-black bg-black text-white px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0">
+            Variación {activeBlock.number}
+          </span>
+        </div>
       </div>
 
       {/* CONTENEDOR DE PREVISUALIZACIÓN DE CONTENIDO DE 1091px (56.8229vw) CENTRADO */}
       <div className="relative w-full flex items-center justify-center">
         {/* RECUADRO DE PREVISUALIZACIÓN DE CONTENIDO */}
         <div
-          className={`bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[26px] flex items-center justify-between w-[56.8229vw] transition-all duration-300 ${isVideo ? 'h-[62.9630vh]' : 'h-[36.8519vh]'
+          className={`bg-white/60 backdrop-blur-sm border-2 border-[#888888]/40 rounded-[23px] flex items-center justify-between w-[56.8229vw] transition-all duration-300 ${isVideo ? 'h-[59vh]' : 'h-[36.8519vh]'
             }`}
           style={{
-            paddingTop: '14px',
-            paddingBottom: '14px',
+            paddingTop: '10px',
+            paddingBottom: '10px',
             paddingLeft: '10px',
             paddingRight: '10px',
             gap: '12px',
@@ -919,14 +986,14 @@ export default function PostEditorWorkspace({
         >
           {/* COLUMNA IZQUIERDA: CONTENEDOR DE LA IMAGEN O VIDEO */}
           {isVideo ? (
-            <div className="h-full w-[31.0898%] rounded-[20px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative flex-shrink-0 shadow-sm">
+            <div className="h-full w-[31.0898%] rounded-[14px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative flex-shrink-0 shadow-sm">
               <video
                 src={activeMediaUrl}
                 controls
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-full object-cover rounded-[20px]"
+                className="w-full h-full object-cover rounded-[14px]"
               />
             </div>
           ) : (
@@ -936,7 +1003,7 @@ export default function PostEditorWorkspace({
                 width: '30.7974%',
               }}
             >
-              <div className="w-full aspect-square rounded-[18px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group">
+              <div className="w-full aspect-square rounded-[14px] overflow-hidden border border-black/10 bg-neutral-900 flex items-center justify-center relative group">
                 <img
                   src={activeMediaUrl}
                   alt="active-media"
@@ -962,7 +1029,7 @@ export default function PostEditorWorkspace({
           )}
 
           {/* COLUMNA DERECHA: RECUADRO VISTA PREVIA DE TEXTO */}
-          <div className="flex-1 h-full bg-white border-2 border-[#888888]/40 rounded-[20px] p-6 flex flex-col overflow-y-auto">
+          <div className="flex-1 h-full bg-white border-2 border-[#888888]/40 rounded-[14px] p-6 flex flex-col overflow-y-auto">
             {activeBlock.caption.trim() ? (
               <p className="text-sm font-normal text-black leading-relaxed whitespace-pre-wrap">
                 {activeBlock.caption}
@@ -979,6 +1046,7 @@ export default function PostEditorWorkspace({
         <div
           className="absolute left-[calc(50%+28.41145vw+1.2vw)] flex flex-col items-center justify-start"
           style={{
+            left: 'calc(100% + .9vw)',
             top: '6.2963vh',
             gap: '1.1111vh',
           }}
@@ -1192,9 +1260,8 @@ export default function PostEditorWorkspace({
                     top: `${topPercent}%`,
                     transform: 'translateY(-50%)',
                   }}
-                  className={`absolute inset-x-0 flex items-center justify-center z-10 ${
-                    isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
+                  className={`absolute inset-x-0 flex items-center justify-center z-10 ${isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
+                    }`}
                   title={
                     isBlocked
                       ? `${plat.name} (Asignada a otra variación con los mismos archivos)`
@@ -1202,13 +1269,12 @@ export default function PostEditorWorkspace({
                   }
                 >
                   <div
-                    className={`flex items-center justify-center transition-colors ${
-                      isSel
-                        ? 'text-white font-bold'
-                        : isBlocked
+                    className={`flex items-center justify-center transition-colors ${isSel
+                      ? 'text-white font-bold'
+                      : isBlocked
                         ? 'text-[#999999] opacity-40 font-normal'
                         : 'text-[#666666] hover:text-[#333333] font-semibold'
-                    }`}
+                      }`}
                   >
                     {plat.id === 'facebook' && (
                       <span className="text-xl font-black font-sans leading-none">f</span>
@@ -1354,31 +1420,47 @@ export default function PostEditorWorkspace({
         </div>
       )}
 
-      {/* CAJA DE TEXTO INFERIOR DE LA VARIACIÓN ACTIVA CON BOTONES DE ACCIÓN */}
-      <div className="flex items-center gap-3 w-[56.8229vw] mt-[12.2037vh]">
-        <motion.div
-          layoutId="post-caption-container"
-          className="flex-1 bg-white border-2 border-[#888888]/50 rounded-[32px] p-3 px-5 flex items-center justify-between gap-3 min-h-[10vh]"
-        >
+      {/* RECUADRO CONTENEDOR EXTERIOR SIN COLOR CON BORDE DE 2px GRIS OSCURO Y PADDING EN % A LA IZQUIERDA Y DERECHA */}
+      <div
+        className="w-[56.8229vw] h-[16.9vh] bg-transparent border-2 border-black/40 rounded-[36px] flex items-center justify-between gap-2 p-[5px] relative"
+        style={{
+          marginTop: isVideo ? '2.5vh' : '8vh',
+          paddingLeft: '.4%', // <-- Separación del borde izquierdo (.7%)
+          paddingRight: '.7%', // <-- Separación del borde derecho idéntica (.7%)
+        }}
+      >
+        {/* RECUADRO BLANCO DE TEXTO INTERNO (80% del contenedor exterior anclado desde su borde izquierdo) */}
+        <div className="w-[90%] shrink-0 bg-white border-2 border-black/40 rounded-[31px] p-3 px-4 flex items-center justify-between min-h-[95%] shadow-xs">
           <textarea
             value={activeBlock.caption}
             onChange={(e) => handleCaptionChange(e.target.value)}
             placeholder={`Escribe la descripción de la Variación ${activeBlock.number}...`}
             rows={2}
-            className="w-full bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
+            className="w-full h-[3vh] bg-transparent text-xs font-normal text-black outline-none border-none placeholder:text-[#999999] placeholder:italic resize-none leading-relaxed"
           />
-        </motion.div>
+        </div>
 
-        {/* Pila vertical de botones redondos */}
-        {/* Pila vertical de botones redondos */}
-        <div className="flex flex-col gap-2 relative">
+        {/* COLUMNA VERTICAL DE BOTONES DE ACCIÓN (Centrados verticalmente, expandiendo hacia la izquierda desde su borde derecho) */}
+        <div
+          className="h-full flex flex-col items-center justify-center gap-2 relative shrink-0"
+          style={{
+            width: '9%',
+          }}
+        >
           <button
-            onClick={() => setIsCalendarOpen(true)}
-            className="w-11 h-11 bg-[#38BDF8] hover:bg-[#0284C7] text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+            onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+            className="w-full text-white rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm"
+            style={{
+              height: '44%',
+              border: '.5vw solid transparent',
+              background:
+                'linear-gradient(45deg, #267bb0 0%, #75d2ff 100%) padding-box, linear-gradient(-45deg, #267bb0 0%, #75d2ff 100%) border-box',
+              backgroundClip: 'padding-box, border-box',
+            }}
             title="Programar publicación de esta variación"
           >
             <svg
-              className="w-5 h-5"
+              className="w-8 h-8"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -1386,23 +1468,159 @@ export default function PostEditorWorkspace({
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth={1}
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
           </button>
 
+          {/* DESPLEGABLE DE CALENDARIO 1:1 CON EL DISEÑO DE REFERENCIA */}
+          <AnimatePresence>
+            {isCalendarOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, x: -10 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.9, x: -10 }}
+                className="absolute bottom-0 z-40 shadow-2xl overflow-hidden select-none"
+                style={{
+                  left: 'calc(100% + 1.4vw)', // Positioned to the right with 1vw gap
+                  width: '18.75vw',
+                  height: '31vh',
+                  padding: '0.52vw',
+                  borderRadius: '24px',
+                  border: '0.52vw solid transparent',
+                  background:
+                    'linear-gradient(45deg, #267bb0 0%, #75d2ff 100%) padding-box, linear-gradient(-45deg, #267bb0 0%, #75d2ff 100%) border-box',
+                  backgroundClip: 'padding-box, border-box',
+                }}
+              >
+                <div className="w-full h-full flex flex-col justify-start p-2 text-white">
+                  {/* CABECERA CON BOTONES EN POSICIÓN FIJA INDEPENDIENTE DE LA LONGITUD DEL NOMBRE DEL MES */}
+                  <div
+                    className="relative flex items-center justify-center w-full px-2"
+                    style={{
+                      paddingTop: '.1vh',
+                      paddingBottom: '1.2vh',
+                    }}
+                  >
+                    {/* BOTÓN MES ANTERIOR FIJO A LA IZQUIERDA */}
+                    <button
+                      onClick={handlePrevMonth}
+                      className="absolute text-white hover:opacity-80 p-1 cursor-pointer transition-transform active:scale-90"
+                      style={{ left: '2.2vw' }}
+                      title="Mes anterior"
+                    >
+                      <svg
+                        className="w-4 h-4 rotate-90"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+
+                    {/* NOMBRE DEL MES CENTRADO */}
+                    <span className="text-white font-bold text-[2.6vh] tracking-wide text-center">
+                      {calendarMonthName}
+                    </span>
+
+                    {/* BOTÓN MES SIGUIENTE FIJO A LA DERECHA */}
+                    <button
+                      onClick={handleNextMonth}
+                      className="absolute text-white hover:opacity-80 p-1 cursor-pointer transition-transform active:scale-90"
+                      style={{ right: '2.2vw' }}
+                      title="Mes siguiente"
+                    >
+                      <svg
+                        className="w-4 h-4 -rotate-90"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* ENCABEZADOS DE DÍAS DE LA SEMANA (Dom Lun Mar Mie Jue Vie Sáb) */}
+                  <div
+                    className="grid grid-cols-7 text-center text-[1.1vh] font-semibold text-white/90 w-full px-2"
+                    style={{ marginBottom: '1.8vh' }}
+                  >
+                    <span>Dom</span>
+                    <span>Lun</span>
+                    <span>Mar</span>
+                    <span>Mie</span>
+                    <span>Jue</span>
+                    <span>Vie</span>
+                    <span>Sáb</span>
+                  </div>
+
+                  {/* REJILLA DE DÍAS DEL MES */}
+                  <div
+                    className="grid grid-cols-7 text-center flex-1 items-center justify-items-center w-full px-2"
+                    style={{
+                      rowGap: '6.3px',
+                      alignContent: 'start',
+                    }}
+                  >
+                    {Array.from({ length: firstDayIndex }).map((_, i) => (
+                      <div key={`empty-${i}`} />
+                    ))}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const isSelected = isSelectedDay(day);
+                      return (
+                        <button
+                          key={day}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCalendarDate(new Date(calendarYear, calendarMonth, day));
+                          }}
+                          className={`w-[2.3vh] h-[2.3vh] mx-auto text-[1.1vh] flex items-center justify-center rounded-full transition-all cursor-pointer ${isSelected
+                            ? 'bg-white text-[#267bb0] font-bold shadow-xs scale-110'
+                            : 'text-white hover:bg-white/20 font-medium'
+                            }`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <button
             onClick={() => handlePublish(false)}
             disabled={isPublishing}
-            className="w-11 h-11 bg-[#4A4A4A] hover:bg-[#333333] disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+            className="w-full text-white rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50"
+            style={{
+              height: '44%',
+              border: '.5vw solid transparent',
+              background:
+                'linear-gradient(45deg, #383838 0%, #7A7A7A 100%) padding-box, linear-gradient(-45deg, #383838 0%, #7A7A7A 100%) border-box',
+              backgroundClip: 'padding-box, border-box',
+            }}
             title="Confirmar y publicar esta variación"
           >
             {isPublishing ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <svg
-                className="w-5 h-5"
+                className="w-11 h-11"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -1410,7 +1628,7 @@ export default function PostEditorWorkspace({
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={3}
+                  strokeWidth={2}
                   d="M5 13l4 4L19 7"
                 />
               </svg>
@@ -1426,11 +1644,10 @@ export default function PostEditorWorkspace({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-bold shadow-xl border flex items-center gap-3 ${
-              statusType === 'error'
-                ? 'bg-red-600 text-white border-red-500'
-                : 'bg-black text-white border-black/20'
-            }`}
+            className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-bold shadow-xl border flex items-center gap-3 ${statusType === 'error'
+              ? 'bg-red-600 text-white border-red-500'
+              : 'bg-black text-white border-black/20'
+              }`}
           >
             <span>{statusMessage}</span>
             <button
@@ -1442,67 +1659,6 @@ export default function PostEditorWorkspace({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* MODAL INTERACTIVO DE CALENDARIO Y PROGRAMACIÓN */}
-      {isCalendarOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-              <h3 className="text-base font-extrabold text-black tracking-tight">
-                🗓️ Programar Variación #{activeBlock.number}
-              </h3>
-              <button
-                onClick={() => setIsCalendarOpen(false)}
-                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-black flex items-center justify-center font-bold text-xs cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Fecha de publicación
-                </label>
-                <input
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-black"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Hora de publicación
-                </label>
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-black"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center justify-end gap-3 border-t border-gray-100">
-              <button
-                onClick={() => setIsCalendarOpen(false)}
-                className="px-4 py-2.5 rounded-full text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-black transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handlePublish(true)}
-                disabled={isPublishing}
-                className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#38BDF8] hover:bg-[#0284C7] text-white transition-all shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {isPublishing ? 'Guardando...' : 'Confirmar Programación'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

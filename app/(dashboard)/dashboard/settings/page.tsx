@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   const userEmail = headerList.get('x-user-email') ?? '';
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2] text-black p-6 md:p-10 font-sans">
+    <div className="min-h-screen bg-[#F6F6F6] text-black p-6 md:p-10 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Navigation Bar - Estilo Bento Don Emilio */}

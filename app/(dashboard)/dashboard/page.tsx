@@ -231,7 +231,7 @@ export default function DashboardPage() {
   return (
     <div
       className="h-screen w-screen overflow-hidden relative"
-      style={{ background: '#F2F2F2' }}
+      style={{ background: '#F6F6F6' }}
     >
       {/* Input de multimedia oculto */}
       <input
@@ -279,11 +279,11 @@ export default function DashboardPage() {
           ========================================================= */}
       <motion.div
         animate={{
-          top: isEditorActive ? '4.0741vh' : '8vh',
+          top: isEditorActive ? '4.0741vh' : '10vh',
           right: isEditorActive ? '2.2917vw' : '0vw',
           left: isEditorActive ? 'auto' : '0vw',
           width: isEditorActive ? 'auto' : '100%',
-          scale: isEditorActive ? 0.22 : 1,
+          scale: isEditorActive ? 0.28 : 1,
         }}
         transition={transitionProps}
         className={`absolute flex flex-col items-center z-30 ${isEditorActive
@@ -298,21 +298,23 @@ export default function DashboardPage() {
         }}
         title={isEditorActive ? 'Volver al inicio' : undefined}
       >
-        {!isEditorActive && (
-          <p
-            className="font-medium text-[#666666] select-none"
-            style={{ fontSize: '1.1vw', marginBottom: '10vh' }}
-          >
-            Agiliza tu comunicación con...
-          </p>
-        )}
+        <div className="inline-flex flex-col items-start relative">
+          {!isEditorActive && (
+            <p
+              className="font-medium text-[#666666] select-none"
+              style={{ fontSize: '1.5vw', marginBottom: '2px' }}
+            >
+              Agiliza tu comunicación con...
+            </p>
+          )}
 
-        <h1
-          className="nuh-title tracking-[-0.08em] font-black leading-none text-center select-none"
-          style={{ fontSize: 'clamp(120px, 20vw, 380px)' }}
-        >
-          NUH
-        </h1>
+          <h1
+            className="nuh-title tracking-[-0.08em] font-black leading-none text-left select-none"
+            style={{ fontSize: 'clamp(120px, 21vw, 380px)', marginTop: '-8vh' }}
+          >
+            NUH
+          </h1>
+        </div>
       </motion.div>
 
       {/* =========================================================
@@ -345,27 +347,27 @@ export default function DashboardPage() {
             exit={{ opacity: 0, scale: 1.3, y: 350 }}
             transition={transitionProps}
             className="absolute w-full flex flex-col items-center pointer-events-none z-30"
-            style={{ top: '42vh', willChange: 'transform, opacity' }}
+            style={{ top: '38vh', willChange: 'transform, opacity' }}
           >
             <div
               className="flex items-center pointer-events-auto relative"
-              style={{ gap: '0.8vw' }}
+              style={{ gap: '0.5vw' }}
             >
               {/* Botón Organización Desplegable */}
               <div className="relative">
                 <button
                   onClick={() => setActiveModal(activeModal === 'org' ? null : 'org')}
-                  className="flex items-center justify-between rounded-full text-sm font-semibold border border-black/10 transition-transform active:scale-95 cursor-pointer shadow-sm hover:bg-[#CCCCCC]"
+                  className="flex items-center justify-between rounded-[25px] text-sm font-semibold border border-black/10 transition-transform active:scale-95 cursor-pointer shadow-sm hover:bg-[#CCCCCC]"
                   style={{
-                    width: '22vw',
-                    height: '5.5vh',
+                    width: '24vw',
+                    height: '7vh',
                     background: '#D9D9D9',
                     color: '#000000',
                     paddingLeft: '1.8vw',
                     paddingRight: '1.8vw',
                   }}
                 >
-                  <span className="truncate pr-2">{orgNames[selectedOrg] || 'Seleccionar Organización'}</span>
+                  <span className="truncate pr-2 font-[500] text-[3vh]">{orgNames[selectedOrg] || 'Seleccionar Organización'}</span>
                   <svg
                     className={`w-4 h-4 opacity-60 flex-shrink-0 transition-transform ${activeModal === 'org' ? 'rotate-180' : ''}`}
                     fill="none"
@@ -415,8 +417,8 @@ export default function DashboardPage() {
               {/* Botón Crear (Abre el selector multimedia) */}
               <button
                 onClick={handleCrearClick}
-                className="btn-crear text-sm font-bold rounded-full flex items-center justify-center transition-transform active:scale-95 hover:opacity-90 shadow-md"
-                style={{ width: '10vw', height: '5.5vh' }}
+                className="btn-crear font-extrabold rounded-[25px] flex items-center justify-center transition-transform active:scale-95 hover:opacity-90 shadow-md"
+                style={{ width: '11vw', height: '7vh', fontSize: '3vh', fontWeight: '500', letterSpacing: '-1px' }}
               >
                 Crear
               </button>
@@ -507,7 +509,6 @@ export default function DashboardPage() {
               top: '4.1vh',
               right: '2.3vw',
               width: '18.2vw',
-              height: '43vh',
               willChange: 'transform, opacity',
             }}
           >
@@ -532,7 +533,6 @@ export default function DashboardPage() {
               bottom: '4.0741vh',
               left: '2.2917vw',
               right: '2.2917vw',
-              height: '22vh',
               gap: '1.2vw',
             }}
           >
@@ -550,15 +550,15 @@ export default function DashboardPage() {
               exit={{ opacity: 0, scale: 1.3, x: 600, y: 350 }}
               transition={transitionProps}
               className="flex flex-1 items-end justify-end pointer-events-auto"
-              style={{ gap: '1.2vw', height: '100%', willChange: 'transform, opacity' }}
+              style={{ gap: '1.2vw', willChange: 'transform, opacity' }}
             >
-              <div style={{ width: '18vw', height: '100%' }}>
+              <div style={{ width: '18vw' }}>
                 <FolderCard title="Almacenamiento" onClick={() => setActiveModal('storage')}>
                   <StorageBar usedGB={3500} totalGB={3688} />
                 </FolderCard>
               </div>
 
-              <div style={{ width: '15vw', height: '100%' }}>
+              <div style={{ width: '15vw' }}>
                 <FolderCard title="Alcance total (mes)" onClick={() => setActiveModal('reach')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
@@ -568,7 +568,7 @@ export default function DashboardPage() {
                 </FolderCard>
               </div>
 
-              <div style={{ width: '15vw', height: '100%' }}>
+              <div style={{ width: '15vw' }}>
                 <FolderCard title="Planificador" onClick={() => setActiveModal('planner')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
@@ -578,13 +578,13 @@ export default function DashboardPage() {
                 </FolderCard>
               </div>
 
-              <div style={{ width: '15vw', height: '100%' }}>
+              <div style={{ width: '15vw' }}>
                 <FolderCard title="Comentarios" onClick={() => setActiveModal('comments')}>
                   <div className="flex flex-col justify-center h-full">
                     <p className="text-3xl font-extrabold text-[#000000] tracking-tight leading-none">
                       100
                     </p>
-                    <p className="text-xs font-semibold text-[#666666] mt-1">
+                    <p className="text-[2.4vh] font-[400] text-[#000000] -mt-1.5">
                       Nuevos
                     </p>
                   </div>
@@ -633,7 +633,7 @@ export default function DashboardPage() {
             <div
               className="absolute inset-x-0 flex justify-center pointer-events-none z-20"
               style={{
-                top: '16.5741vh',
+                top: '12.6vh',
                 bottom: '4.0741vh',
               }}
             >
@@ -643,7 +643,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8, y: 30 }}
                 transition={transitionProps}
-                className="pointer-events-auto flex flex-col items-center justify-between"
+                className="pointer-events-auto flex flex-col items-center justify-start"
                 style={{
                   width: '56.8229vw',
                   height: '100%',
