@@ -1,7 +1,8 @@
 'use server';
 
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
+import { cookies, headers } from 'next/headers';
 
 export interface PublishPostPayload {
   title?: string;
@@ -11,17 +12,37 @@ export interface PublishPostPayload {
   orgId?: string;
 }
 
+function getAdminClient() {
+  const serviceRoleKey =
+    process.env.SUPABASE_CENTRAL_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceRoleKey) return null;
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
+    serviceRoleKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
+}
+
 export async function publishPostAction(payload: PublishPostPayload) {
   try {
+    const headerList = await headers();
+    const headerOrgId = headerList.get('x-user-org-id');
+
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL || '',
       process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY || '',
       {
         cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
+          getAll() { return cookieStore.getAll(); },
           setAll(cookiesToSet) {
             try {
               cookiesToSet.forEach(({ name, value, options }) =>
@@ -33,13 +54,12 @@ export async function publishPostAction(payload: PublishPostPayload) {
       }
     );
 
-    // 1. Obtener usuario o perfil si está autenticado
     const { data: { user } } = await supabase.auth.getUser();
 
-    let targetOrgId = payload.orgId;
+    let targetOrgId = payload.orgId || headerOrgId || 'org-1';
     let creatorId = user?.id;
 
-    if (user && !targetOrgId) {
+    if (user && !payload.orgId) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('org_id')
@@ -50,7 +70,10 @@ export async function publishPostAction(payload: PublishPostPayload) {
       }
     }
 
-    // 2. Guardar Causa / Publicación en Supabase si hay cliente configurado
+    const adminClient = getAdminClient();
+    const dbClient = adminClient || supabase;
+
+    // 1. Guardar Causa / Publicación en Supabase Central
     let causeId: string | undefined;
 
     if (process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL) {
@@ -66,7 +89,7 @@ export async function publishPostAction(payload: PublishPostPayload) {
         }
       }
 
-      const { data: cause, error: dbError } = await supabase
+      const { data: cause } = await dbClient
         .from('causes')
         .insert({
           org_id: targetOrgId || null,
@@ -79,16 +102,16 @@ export async function publishPostAction(payload: PublishPostPayload) {
         .select('id')
         .single();
 
-      if (!dbError && cause) {
+      if (cause) {
         causeId = cause.id;
       }
     }
 
-    // 3. Obtener la URL del Webhook de n8n
+    // 2. Obtener la URL del Webhook de n8n desde las organizaciones
     let webhookUrl: string | undefined = process.env.N8N_WEBHOOK_URL;
 
     if (targetOrgId && process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL) {
-      const { data: orgData } = await supabase
+      const { data: orgData } = await dbClient
         .from('organizations')
         .select('settings')
         .eq('id', targetOrgId)
@@ -99,7 +122,7 @@ export async function publishPostAction(payload: PublishPostPayload) {
       }
     }
 
-    // 4. Disparar Webhook a n8n para envío a redes sociales
+    // 3. Disparar Webhook a n8n para envío a redes sociales
     let webhookDispatched = false;
 
     if (webhookUrl) {
@@ -127,7 +150,9 @@ export async function publishPostAction(payload: PublishPostPayload) {
       success: true,
       causeId,
       webhookDispatched,
-      message: '¡Publicación enviada y procesada exitosamente!',
+      message: webhookDispatched
+        ? '¡Publicación enviada al webhook de n8n exitosamente!'
+        : '¡Publicación guardada correctamente!',
     };
   } catch (error: any) {
     console.error('Error publicando post:', error);

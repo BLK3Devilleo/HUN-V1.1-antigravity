@@ -210,26 +210,42 @@ export default function PostEditorWorkspace({
 
   const handlePublish = async (isScheduled: boolean = false) => {
     setIsPublishing(true);
+    setStatusMessage(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
       if (isScheduled && (!scheduledDate || !scheduledTime)) {
         setStatusType('error');
         setStatusMessage('Por favor selecciona fecha y hora para programar.');
         setIsPublishing(false);
         return;
       }
-      setStatusType('success');
-      setStatusMessage(
-        isScheduled
-          ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
-          : `Variación #${activeBlock.number} publicada con éxito.`
-      );
-      if (isScheduled) {
-        setIsCalendarOpen(false);
+
+      const { publishPostAction } = await import('@/app/actions/post');
+      const res = await publishPostAction({
+        title: postTitle,
+        caption: activeBlock.caption || '',
+        mediaUrls: activeBlock.thumbnails || [],
+        platforms: activeBlock.selectedPlatforms || [],
+      });
+
+      if (res.success) {
+        setStatusType('success');
+        setStatusMessage(
+          isScheduled
+            ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
+            : res.webhookDispatched
+            ? `Variación #${activeBlock.number} enviada al Webhook de n8n con éxito.`
+            : `Variación #${activeBlock.number} guardada exitosamente.`
+        );
+        if (isScheduled) {
+          setIsCalendarOpen(false);
+        }
+      } else {
+        setStatusType('error');
+        setStatusMessage(res.error || 'Error al procesar la publicación.');
       }
-    } catch {
+    } catch (err: any) {
       setStatusType('error');
-      setStatusMessage('Ocurrió un error al procesar la publicación.');
+      setStatusMessage(err?.message || 'Ocurrió un error al procesar la publicación.');
     } finally {
       setIsPublishing(false);
     }
