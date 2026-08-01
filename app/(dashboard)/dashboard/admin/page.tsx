@@ -13,7 +13,7 @@ export default async function AdminPage() {
   if (userRole !== 'owner' && userRole !== 'admin' && userRole !== 'moderator') {
     return (
       <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center p-6 text-black font-sans">
-        <div className="bg-[#D9D9D9] border border-black/10 rounded-[32px] p-8 max-w-md w-full text-center shadow-xl space-y-4">
+        <div className="bg-white border border-black/10 rounded-[32px] p-8 max-w-md w-full text-center shadow-xl space-y-4">
           <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mx-auto text-rose-600">
             <ShieldAlert className="w-8 h-8" />
           </div>
@@ -53,42 +53,42 @@ export default async function AdminPage() {
     .select('id, title, description, media_url, created_at, status')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
-    .limit(100); // ✅ FIX W-4: prevent unlimited fetch on large orgs
+    .limit(100);
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] text-black p-4 sm:p-6 md:p-10 font-sans">
+    <div className="min-h-screen bg-[#F6F6F6] text-black px-4 py-8 sm:px-8 md:px-12 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Navigation Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-black bg-[#C4C4C4] hover:bg-[#B5B5B5] px-5 py-2.5 rounded-full shadow-sm transition-all w-fit cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-black bg-[#E2E2E2] hover:bg-[#D4D4D4] px-5 py-2.5 rounded-full shadow-sm transition-all w-fit cursor-pointer border border-black/5"
           >
             <ArrowLeft className="w-4 h-4 text-black" />
             <span>Volver al Dashboard</span>
           </Link>
 
-          <div className="flex items-center gap-2 bg-[#C4C4C4] text-black px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm w-fit">
+          <div className="flex items-center gap-2 bg-white border border-black/10 text-black px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm w-fit">
             <ShieldCheck className="w-4 h-4 text-purple-700" />
             <span>Rol: {userRole}</span>
           </div>
         </div>
 
-        {/* Header Principal Bento Box (Estilo Don Emilio) */}
-        <div className="bg-[#D9D9D9] border border-black/10 rounded-[28px] p-6 sm:p-8 shadow-sm relative">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold text-[#666666] uppercase tracking-wider flex items-center gap-1.5">
+        {/* Header Principal Bento Box */}
+        <div className="bg-white border border-black/10 rounded-[28px] p-6 sm:p-10 shadow-sm relative space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#666666] uppercase tracking-wider flex items-center gap-1.5 bg-[#F0F0F0] px-3 py-1 rounded-full border border-black/5">
               <Sparkles className="w-4 h-4 text-black" />
               Panel de Moderación NUH
             </span>
           </div>
 
-          <h1 className="nuh-title text-3xl sm:text-4xl md:text-5xl font-black text-black tracking-tight leading-tight mb-3">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-black tracking-tight leading-snug">
             Moderación y Aprobación de Causas
           </h1>
 
-          <p className="text-sm text-[#666666] font-semibold max-w-2xl leading-relaxed">
+          <p className="text-sm text-[#555555] font-medium max-w-2xl leading-relaxed">
             Revisa, aprueba o rechaza los borradores de iniciativas cargados por tu equipo antes de orquestar su difusión masiva hacia las redes sociales.
           </p>
         </div>

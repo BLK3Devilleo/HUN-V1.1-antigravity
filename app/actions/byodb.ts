@@ -92,7 +92,7 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
     };
   }
 
-  // Obtenemos el org_id del middleware
+  // Obtenemos el org_id del proxy (Next.js 16)
   const headerList = await headers();
   const orgId = headerList.get('x-user-org-id');
 

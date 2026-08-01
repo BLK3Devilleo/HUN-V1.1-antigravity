@@ -9,7 +9,7 @@ const PresignSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // Verificar que el org_id venga del middleware (usuario autenticado)
+  // Verificar que el org_id venga del proxy (Next.js 16 - usuario autenticado)
   const orgId = request.headers.get('x-user-org-id');
   if (!orgId) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });

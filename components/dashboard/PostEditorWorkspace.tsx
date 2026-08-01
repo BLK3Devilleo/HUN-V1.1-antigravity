@@ -167,40 +167,6 @@ export default function PostEditorWorkspace({
   const [postTitle, setPostTitle] = useState<string>(currentPostTitle);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState<boolean>(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
-  const [isPublishing, setIsPublishing] = useState<boolean>(false);
-  const [scheduledDate, setScheduledDate] = useState<string>('');
-  const [scheduledTime, setScheduledTime] = useState<string>('');
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [statusType, setStatusType] = useState<'success' | 'error'>('success');
-
-  const handlePublish = async (isScheduled: boolean) => {
-    setIsPublishing(true);
-    setStatusMessage(null);
-    try {
-      const { publishPostAction } = await import('@/app/actions/post');
-      const res = await publishPostAction({
-        title: postTitle,
-        caption: activeBlock.caption,
-        mediaUrls: activeBlock.thumbnails,
-        platforms: activeBlock.selectedPlatforms,
-      });
-      if (res.success) {
-        setStatusType('success');
-        setStatusMessage(isScheduled ? '¡Publicación programada exitosamente!' : '¡Publicación lanzada exitosamente!');
-        setIsCalendarOpen(false);
-      } else {
-        setStatusType('error');
-        setStatusMessage(res.error || 'Error al publicar.');
-      }
-    } catch (err: any) {
-      setStatusType('error');
-      setStatusMessage(err.message || 'Error al procesar la publicación.');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [scheduledDate, setScheduledDate] = useState<string>('');
@@ -244,26 +210,42 @@ export default function PostEditorWorkspace({
 
   const handlePublish = async (isScheduled: boolean = false) => {
     setIsPublishing(true);
+    setStatusMessage(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
       if (isScheduled && (!scheduledDate || !scheduledTime)) {
         setStatusType('error');
         setStatusMessage('Por favor selecciona fecha y hora para programar.');
         setIsPublishing(false);
         return;
       }
-      setStatusType('success');
-      setStatusMessage(
-        isScheduled
-          ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
-          : `Variación #${activeBlock.number} publicada con éxito.`
-      );
-      if (isScheduled) {
-        setIsCalendarOpen(false);
+
+      const { publishPostAction } = await import('@/app/actions/post');
+      const res = await publishPostAction({
+        title: postTitle,
+        caption: activeBlock.caption || '',
+        mediaUrls: activeBlock.thumbnails || [],
+        platforms: activeBlock.selectedPlatforms || [],
+      });
+
+      if (res.success) {
+        setStatusType('success');
+        setStatusMessage(
+          isScheduled
+            ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
+            : res.webhookDispatched
+            ? `Variación #${activeBlock.number} enviada al Webhook de n8n con éxito.`
+            : `Variación #${activeBlock.number} guardada exitosamente.`
+        );
+        if (isScheduled) {
+          setIsCalendarOpen(false);
+        }
+      } else {
+        setStatusType('error');
+        setStatusMessage(res.error || 'Error al procesar la publicación.');
       }
-    } catch {
+    } catch (err: any) {
       setStatusType('error');
-      setStatusMessage('Ocurrió un error al procesar la publicación.');
+      setStatusMessage(err?.message || 'Ocurrió un error al procesar la publicación.');
     } finally {
       setIsPublishing(false);
     }
