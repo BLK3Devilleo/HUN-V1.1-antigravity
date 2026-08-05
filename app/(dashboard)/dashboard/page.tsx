@@ -280,9 +280,8 @@ export default function DashboardPage() {
       <motion.div
         animate={{
           top: isEditorActive ? '4.0741vh' : '10vh',
-          right: isEditorActive ? '2.2917vw' : '0vw',
-          left: isEditorActive ? 'auto' : '0vw',
-          width: isEditorActive ? 'auto' : '100%',
+          left: isEditorActive ? 'calc(100vw - 2.2917vw)' : '50vw',
+          x: isEditorActive ? '-100%' : '-50%',
           scale: isEditorActive ? 0.28 : 1,
         }}
         transition={transitionProps}
@@ -290,7 +289,7 @@ export default function DashboardPage() {
           ? 'origin-top-right cursor-pointer pointer-events-auto hover:opacity-80 transition-opacity'
           : 'origin-top pointer-events-none'
           }`}
-        style={{ willChange: 'transform, top, right, left' }}
+        style={{ willChange: 'transform, top, left' }}
         onClick={() => {
           if (isEditorActive) {
             handleBackToDashboard();
@@ -298,18 +297,23 @@ export default function DashboardPage() {
         }}
         title={isEditorActive ? 'Volver al inicio' : undefined}
       >
-        <div className="inline-flex flex-col items-start relative">
-          {!isEditorActive && (
-            <p
-              className="font-medium text-[#666666] select-none"
-              style={{ fontSize: '1.5vw', marginBottom: '2px' }}
-            >
-              Agiliza tu comunicación con...
-            </p>
-          )}
+        <div className="inline-flex flex-col items-center relative">
+          <motion.p
+            initial={false}
+            animate={{
+              opacity: isEditorActive ? 0 : 1,
+              height: isEditorActive ? 0 : 'auto',
+              marginBottom: isEditorActive ? 0 : 2,
+            }}
+            transition={transitionProps}
+            className="font-medium text-[#666666] select-none overflow-hidden whitespace-nowrap"
+            style={{ fontSize: '1.5vw' }}
+          >
+            Agiliza tu comunicación con...
+          </motion.p>
 
           <h1
-            className="nuh-title tracking-[-0.08em] font-black leading-none text-left select-none"
+            className="nuh-title tracking-[-0.08em] font-black leading-none text-center select-none"
             style={{ fontSize: 'clamp(120px, 21vw, 380px)', marginTop: '-8vh' }}
           >
             NUH
@@ -321,7 +325,7 @@ export default function DashboardPage() {
           SIDEBAR: Redes + Botón de Ajustes (Permanece fijo)
           ========================================================= */}
       <div
-        className="absolute z-30"
+        className={`absolute z-30 ${isEditorActive ? 'pointer-events-none' : ''}`}
         style={{
           top: '14.9vh',
           left: '2.2917vw',
@@ -600,7 +604,7 @@ export default function DashboardPage() {
           ========================================================= */}
       <AnimatePresence>
         {isEditorActive && (
-          <div className="absolute inset-0 z-20 pointer-events-none">
+          <div className="absolute inset-0 z-30 pointer-events-none">
             {/* Panel Izquierdo: Trabajos en draft (Carpetas) - Separado exactamente 44px (2.2917vw) del borde izquierdo */}
             <motion.div
               key="editor-sidebar"
@@ -608,7 +612,7 @@ export default function DashboardPage() {
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.8, x: -50 }}
               transition={transitionProps}
-              className="pointer-events-auto absolute"
+              className="pointer-events-auto absolute z-35"
               style={{
                 top: '16.5741vh',
                 left: '2.2917vw',

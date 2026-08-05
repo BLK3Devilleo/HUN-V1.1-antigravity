@@ -18,6 +18,9 @@ export interface ContentVariationBlock {
   fileNames?: string[];
   activeMediaIndex: number;
   isVideoBlock?: boolean;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  isManualSchedule?: boolean;
 }
 
 export interface ProjectDraft {
@@ -170,9 +173,23 @@ export default function PostEditorWorkspace({
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [scheduledDate, setScheduledDate] = useState<string>('');
-  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('12:00');
+  const [sameDayForProject, setSameDayForProject] = useState<boolean>(true);
+  const [calendarStep, setCalendarStep] = useState<'date' | 'time'>('date');
+  const [orangeWarningMessage, setOrangeWarningMessage] = useState<string | null>(null);
+  const [pendingPublishArgs, setPendingPublishArgs] = useState<{ isScheduled: boolean } | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'success' | 'error'>('success');
+
+  // Auto-dismiss del aviso de estado / programación tras 7 segundos
+  useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => {
+        setStatusMessage(null);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
 
   // Estado y funciones del Calendario 1:1
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
@@ -208,17 +225,157 @@ export default function PostEditorWorkspace({
     );
   };
 
-  const handlePublish = async (isScheduled: boolean = false) => {
+  // Helper para calcular la hora escalonada con gap de al menos 2 minutos entre bloques
+  const calculateStaggeredTime = (baseTimeStr: string, indexOffset: number): string => {
+    const [hoursStr, minsStr] = (baseTimeStr || '12:00').split(':');
+    let hours = parseInt(hoursStr || '12', 10);
+    let mins = parseInt(minsStr || '00', 10) + indexOffset * 2;
+
+    if (mins >= 60) {
+      hours += Math.floor(mins / 60);
+      mins = mins % 60;
+    }
+    if (hours >= 24) {
+      hours = hours % 24;
+    }
+
+    const formattedH = hours.toString().padStart(2, '0');
+    const formattedM = mins.toString().padStart(2, '0');
+    return `${formattedH}:${formattedM}`;
+  };
+
+  // 1. Guardar únicamente los datos de programación sin ejecutar subida
+  const handleSaveScheduleOnly = () => {
+    if (!scheduledDate || !scheduledTime) {
+      setStatusType('error');
+      setStatusMessage('Por favor selecciona fecha y hora para programar.');
+      return;
+    }
+
+    const hasMultipleBlocks = variationBlocks.length > 1;
+
+    if (hasMultipleBlocks && sameDayForProject) {
+      // Asignar la misma fecha y calcular +2 min de diferencia entre cada bloque
+      setVariationBlocks((prev) =>
+        prev.map((block, idx) => {
+          const isCurrent = block.id === activeBlockId;
+          const staggeredTime = calculateStaggeredTime(scheduledTime, idx);
+          return {
+            ...block,
+            scheduledDate: scheduledDate,
+            scheduledTime: staggeredTime,
+            isManualSchedule: isCurrent,
+          };
+        })
+      );
+      setIsCalendarOpen(false);
+      setCalendarStep('date');
+      setStatusType('success');
+      setStatusMessage(
+        `Programación guardada: todos los bloques programados para el ${scheduledDate} a partir de las ${scheduledTime} (+2 min entre bloques).`
+      );
+    } else {
+      // Guardar fecha y hora únicamente para el bloque activo
+      setVariationBlocks((prev) =>
+        prev.map((block) => {
+          if (block.id === activeBlockId) {
+            return {
+              ...block,
+              scheduledDate: scheduledDate,
+              scheduledTime: scheduledTime,
+              isManualSchedule: true,
+            };
+          }
+          return block;
+        })
+      );
+      setIsCalendarOpen(false);
+      setCalendarStep('date');
+      setStatusType('success');
+
+      // Comprobar si existen otros bloques en el proyecto sin programar
+      const otherUnscheduled = variationBlocks.some(
+        (b) => b.id !== activeBlockId && (!b.scheduledDate || !b.scheduledTime)
+      );
+
+      if (hasMultipleBlocks && otherUnscheduled) {
+        setStatusMessage(
+          `Programación guardada para el Bloque #${activeBlock.number}. Nota: Hay otros bloques sin programar en este proyecto.`
+        );
+      } else {
+        setStatusMessage(
+          `Programación guardada para la Variación #${activeBlock.number} (${scheduledDate} ${scheduledTime}).`
+        );
+      }
+    }
+  };
+
+  // Función para alternar Mismo día para este proyecto y limpiar bloques no manuales si se desactiva
+  const handleToggleSameDay = (newValue: boolean) => {
+    setSameDayForProject(newValue);
+    if (!newValue) {
+      // Si se desactiva "Mismo día para este proyecto", limpiar la fecha de los bloques ajustados automáticamente
+      setVariationBlocks((prev) =>
+        prev.map((block) => {
+          if (!block.isManualSchedule) {
+            return {
+              ...block,
+              scheduledDate: undefined,
+              scheduledTime: undefined,
+            };
+          }
+          return block;
+        })
+      );
+      setStatusType('error');
+      setStatusMessage('Se removió la programación automática de los bloques sin registro manual.');
+    }
+  };
+
+  // Función para cancelar la programación ÚNICAMENTE del bloque activo
+  const handleCancelSchedule = () => {
+    setVariationBlocks((prev) =>
+      prev.map((block) => {
+        if (block.id === activeBlockId) {
+          return {
+            ...block,
+            scheduledDate: undefined,
+            scheduledTime: undefined,
+            isManualSchedule: false,
+          };
+        }
+        return block;
+      })
+    );
+    setIsCalendarOpen(false);
+    setCalendarStep('date');
+    setStatusType('error');
+    setStatusMessage(`Programación cancelada para la Variación #${activeBlock.number}.`);
+  };
+
+  // 2. Única vía para mandar a subir/publicar: Botón con icono de Palomita (✓)
+  const handleCheckmarkPublish = () => {
+    const totalBlocks = variationBlocks.length;
+    const scheduledBlocksCount = variationBlocks.filter(
+      (b) => b.scheduledDate && b.scheduledTime
+    ).length;
+
+    // Si existen múltiples bloques y solo una parte de ellos está programada:
+    if (totalBlocks > 1 && scheduledBlocksCount > 0 && scheduledBlocksCount < totalBlocks) {
+      setOrangeWarningMessage(
+        'Faltan bloques por programar, continuar los subirá en fila ahora. ¿Continuar?'
+      );
+      setPendingPublishArgs({ isScheduled: scheduledBlocksCount > 0 });
+      return;
+    }
+
+    proceedWithPublish(scheduledBlocksCount > 0, false);
+  };
+
+  const proceedWithPublish = async (isScheduled: boolean = false, forceQueue: boolean = false) => {
     setIsPublishing(true);
     setStatusMessage(null);
     try {
-      if (isScheduled && (!scheduledDate || !scheduledTime)) {
-        setStatusType('error');
-        setStatusMessage('Por favor selecciona fecha y hora para programar.');
-        setIsPublishing(false);
-        return;
-      }
-
       const { publishPostAction } = await import('@/app/actions/post');
       const res = await publishPostAction({
         title: postTitle,
@@ -229,15 +386,16 @@ export default function PostEditorWorkspace({
 
       if (res.success) {
         setStatusType('success');
-        setStatusMessage(
-          isScheduled
-            ? `Variación #${activeBlock.number} programada para ${scheduledDate} ${scheduledTime}`
-            : res.webhookDispatched
-            ? `Variación #${activeBlock.number} enviada al Webhook de n8n con éxito.`
-            : `Variación #${activeBlock.number} guardada exitosamente.`
-        );
-        if (isScheduled) {
-          setIsCalendarOpen(false);
+        if (forceQueue) {
+          setStatusMessage(`Variaciones enviadas en fila a la cola de publicación.`);
+        } else if (isScheduled) {
+          setStatusMessage(`Publicación programada enviada con éxito.`);
+        } else {
+          setStatusMessage(
+            res.webhookDispatched
+              ? `Variación #${activeBlock.number} enviada al Webhook de n8n con éxito.`
+              : `Variación #${activeBlock.number} enviada exitosamente.`
+          );
         }
       } else {
         setStatusType('error');
@@ -1104,6 +1262,19 @@ export default function PostEditorWorkspace({
                             title={`Variación de Contenido #${block.number}`}
                           >
                             <span>{block.number}</span>
+
+                            {/* ICONO DE RELOJ AZUL (ABAJO A LA IZQUIERDA DEL CÍRCULO DEL BLOQUE) SI ESTÁ PROGRAMADO */}
+                            {block.scheduledDate && block.scheduledTime && (
+                              <div
+                                className="absolute -bottom-1 -left-1 bg-white text-[#267bb0] border-2 border-[#267bb0] rounded-full w-4.5 h-4.5 flex items-center justify-center shadow-md z-10"
+                                title={`Programado para ${block.scheduledDate} a las ${block.scheduledTime}`}
+                              >
+                                <svg className="w-3 h-3 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                            )}
+
                             {variationBlocks.length > 1 && (
                               <button
                                 onClick={(e) => handleDeleteVariationBlock(block.id, e)}
@@ -1367,7 +1538,7 @@ export default function PostEditorWorkspace({
                   width: '11.3021vw',
                   height: '5.6481vh',
                 }}
-                className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-[1.8vh] font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
               >
                 + Añadir
               </button>
@@ -1377,7 +1548,7 @@ export default function PostEditorWorkspace({
                   width: '11.3021vw',
                   height: '5.6481vh',
                 }}
-                className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-xs font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                className="border-2 border-[#666666]/60 bg-white hover:bg-neutral-100 text-black text-[1.8vh] font-bold rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer"
               >
                 Imagen/Carrusel
               </button>
@@ -1456,7 +1627,7 @@ export default function PostEditorWorkspace({
             </svg>
           </button>
 
-          {/* DESPLEGABLE DE CALENDARIO 1:1 CON EL DISEÑO DE REFERENCIA */}
+          {/* DESPLEGABLE DE CALENDARIO Y HORA DE PUBLICACIÓN 1:1 */}
           <AnimatePresence>
             {isCalendarOpen && (
               <motion.div
@@ -1465,7 +1636,7 @@ export default function PostEditorWorkspace({
                 exit={{ opacity: 0, scale: 0.9, x: -10 }}
                 className="absolute bottom-0 z-40 shadow-2xl overflow-hidden select-none"
                 style={{
-                  left: 'calc(100% + 1.4vw)', // Positioned to the right with 1vw gap
+                  left: 'calc(100% + 1.4vw)',
                   width: '18.75vw',
                   height: '31vh',
                   padding: '0.52vw',
@@ -1476,117 +1647,195 @@ export default function PostEditorWorkspace({
                   backgroundClip: 'padding-box, border-box',
                 }}
               >
-                <div className="w-full h-full flex flex-col justify-start p-2 text-white">
-                  {/* CABECERA CON BOTONES EN POSICIÓN FIJA INDEPENDIENTE DE LA LONGITUD DEL NOMBRE DEL MES */}
-                  <div
-                    className="relative flex items-center justify-center w-full px-2"
-                    style={{
-                      paddingTop: '.1vh',
-                      paddingBottom: '1.2vh',
-                    }}
-                  >
-                    {/* BOTÓN MES ANTERIOR FIJO A LA IZQUIERDA */}
-                    <button
-                      onClick={handlePrevMonth}
-                      className="absolute text-white hover:opacity-80 p-1 cursor-pointer transition-transform active:scale-90"
-                      style={{ left: '2.2vw' }}
-                      title="Mes anterior"
+                {calendarStep === 'date' ? (
+                  <div className="w-full h-full flex flex-col justify-start p-2 text-white">
+                    {/* CABECERA DE NAVEGACIÓN DE MESES */}
+                    <div
+                      className="relative flex items-center justify-center w-full px-2"
+                      style={{
+                        paddingTop: '.1vh',
+                        paddingBottom: '1.2vh',
+                      }}
                     >
-                      <svg
-                        className="w-4 h-4 rotate-90"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                      <button
+                        onClick={handlePrevMonth}
+                        className="absolute text-white hover:opacity-80 p-1 cursor-pointer transition-transform active:scale-90"
+                        style={{ left: '2.2vw' }}
+                        title="Mes anterior"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
+                        <svg className="w-4 h-4 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
 
-                    {/* NOMBRE DEL MES CENTRADO */}
-                    <span className="text-white font-bold text-[2.6vh] tracking-wide text-center">
-                      {calendarMonthName}
-                    </span>
+                      <span className="text-white font-bold text-[2.6vh] tracking-wide text-center">
+                        {calendarMonthName}
+                      </span>
 
-                    {/* BOTÓN MES SIGUIENTE FIJO A LA DERECHA */}
-                    <button
-                      onClick={handleNextMonth}
-                      className="absolute text-white hover:opacity-80 p-1 cursor-pointer transition-transform active:scale-90"
-                      style={{ right: '2.2vw' }}
-                      title="Mes siguiente"
+                      <button
+                        onClick={handleNextMonth}
+                        className="absolute text-white hover:opacity-80 p-1 cursor-pointer transition-transform active:scale-90"
+                        style={{ right: '2.2vw' }}
+                        title="Mes siguiente"
+                      >
+                        <svg className="w-4 h-4 -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* ENCABEZADOS DE DÍAS DE LA SEMANA */}
+                    <div
+                      className="grid grid-cols-7 text-center text-[1.1vh] font-semibold text-white/90 w-full px-2"
+                      style={{ marginBottom: '1.8vh' }}
                     >
-                      <svg
-                        className="w-4 h-4 -rotate-90"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                      <span>Dom</span>
+                      <span>Lun</span>
+                      <span>Mar</span>
+                      <span>Mie</span>
+                      <span>Jue</span>
+                      <span>Vie</span>
+                      <span>Sáb</span>
+                    </div>
+
+                    {/* REJILLA DE DÍAS DEL MES */}
+                    <div
+                      className="grid grid-cols-7 text-center flex-1 items-center justify-items-center w-full px-2"
+                      style={{
+                        rowGap: '6.3px',
+                        alignContent: 'start',
+                      }}
+                    >
+                      {Array.from({ length: firstDayIndex }).map((_, i) => (
+                        <div key={`empty-${i}`} />
+                      ))}
+                      {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const isSelected = isSelectedDay(day);
+                        return (
+                          <button
+                            key={day}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const selectedDate = new Date(calendarYear, calendarMonth, day);
+                              setSelectedCalendarDate(selectedDate);
+                              const yyyy = selectedDate.getFullYear();
+                              const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                              const dd = String(selectedDate.getDate()).padStart(2, '0');
+                              setScheduledDate(`${yyyy}-${mm}-${dd}`);
+                            }}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              const selectedDate = new Date(calendarYear, calendarMonth, day);
+                              setSelectedCalendarDate(selectedDate);
+                              const yyyy = selectedDate.getFullYear();
+                              const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                              const dd = String(selectedDate.getDate()).padStart(2, '0');
+                              setScheduledDate(`${yyyy}-${mm}-${dd}`);
+                              setCalendarStep('time');
+                            }}
+                            title="Doble clic para definir la hora"
+                            className={`w-[2.3vh] h-[2.3vh] mx-auto text-[1.1vh] flex items-center justify-center rounded-full transition-all cursor-pointer ${isSelected
+                              ? 'bg-white text-[#267bb0] font-bold shadow-xs scale-110'
+                              : 'text-white hover:bg-white/20 font-medium'
+                              }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* VISTA 2: SELECCIÓN DE HORA Y BOTÓN ON/OFF MISMO DÍA PARA ESTE PROYECTO */
+                  <div className="w-full h-full flex flex-col justify-between p-3.5 text-white">
+                    {/* SECCIÓN SUPERIOR MÁS GRANDE (VOLVER + FECHA) */}
+                    <div className="flex items-center justify-between border-b border-white/20 pb-2.5 pt-0.5 px-0.5">
+                      <button
+                        onClick={() => setCalendarStep('date')}
+                        className="text-sm font-bold text-white hover:opacity-80 flex items-center gap-1 cursor-pointer transition-transform active:scale-95"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
-                  </div>
+                        <span>← Volver</span>
+                      </button>
+                      <span className="text-base font-extrabold tracking-wide text-white truncate max-w-[65%] text-right">
+                        {selectedCalendarDate.getDate()} {calendarMonthName}
+                      </span>
+                    </div>
 
-                  {/* ENCABEZADOS DE DÍAS DE LA SEMANA (Dom Lun Mar Mie Jue Vie Sáb) */}
-                  <div
-                    className="grid grid-cols-7 text-center text-[1.1vh] font-semibold text-white/90 w-full px-2"
-                    style={{ marginBottom: '1.8vh' }}
-                  >
-                    <span>Dom</span>
-                    <span>Lun</span>
-                    <span>Mar</span>
-                    <span>Mie</span>
-                    <span>Jue</span>
-                    <span>Vie</span>
-                    <span>Sáb</span>
-                  </div>
+                    {/* SECCIÓN CENTRAL CLEAN SIN CONTENEDORES CLAROS */}
+                    <div className="flex flex-col gap-4 my-auto py-1 px-1">
+                      {/* HORA DE PUBLICACIÓN CENTRADA Y PÍLDORA MÁS GRANDE */}
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <span className="text-xs font-bold text-white tracking-wide text-center">
+                          Hora de publicación
+                        </span>
+                        <div className="w-[120px] h-[38px] bg-white rounded-full flex items-center justify-center shadow-md">
+                          <input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            className="bg-transparent text-[#267bb0] font-black text-sm outline-none border-none cursor-pointer text-center w-full h-full flex items-center justify-center"
+                            style={{ textAlign: 'center' }}
+                          />
+                        </div>
+                      </div>
 
-                  {/* REJILLA DE DÍAS DEL MES */}
-                  <div
-                    className="grid grid-cols-7 text-center flex-1 items-center justify-items-center w-full px-2"
-                    style={{
-                      rowGap: '6.3px',
-                      alignContent: 'start',
-                    }}
-                  >
-                    {Array.from({ length: firstDayIndex }).map((_, i) => (
-                      <div key={`empty-${i}`} />
-                    ))}
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                      const day = i + 1;
-                      const isSelected = isSelectedDay(day);
-                      return (
-                        <button
-                          key={day}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCalendarDate(new Date(calendarYear, calendarMonth, day));
-                          }}
-                          className={`w-[2.3vh] h-[2.3vh] mx-auto text-[1.1vh] flex items-center justify-center rounded-full transition-all cursor-pointer ${isSelected
-                            ? 'bg-white text-[#267bb0] font-bold shadow-xs scale-110'
-                            : 'text-white hover:bg-white/20 font-medium'
-                            }`}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
+                      {/* BOTÓN ESTILO ON/OFF "MISMO DÍA PARA ESTE PROYECTO" (SOLO SI EXISTE MÁS DE 1 BLOQUE EN EL PROYECTO) */}
+                      {variationBlocks.length > 1 && (
+                        <div className="flex flex-col gap-1.5 w-full pt-1">
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span className="text-xs font-bold text-white leading-tight">
+                              Mismo día para este proyecto
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSameDay(!sameDayForProject)}
+                              className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out cursor-pointer flex items-center shadow-inner shrink-0 ${sameDayForProject ? 'bg-white justify-end' : 'bg-white/30 justify-start'
+                                }`}
+                            >
+                              <motion.div
+                                layout
+                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                className={`w-5 h-5 rounded-full shadow-md ${sameDayForProject ? 'bg-[#267bb0]' : 'bg-white/80'
+                                  }`}
+                              />
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-white/80 font-normal leading-tight">
+                            Todos los bloques compartirán fecha con +2 min de intervalo entre sí.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BOTONES INFERIORES: CANCELAR Y CONFIRMAR */}
+                    <div className="flex items-center gap-2 w-full pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCancelSchedule}
+                        className="w-1/2 h-[4vh] py-2.5 rounded-[12px] bg-red-600/30 hover:bg-red-600/50 text-white font-extrabold text-xs transition-all cursor-pointer shadow-md text-center flex items-center justify-center border border-red-400/30 active:scale-95"
+                        title="Cancelar o remover la programación"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveScheduleOnly}
+                        className="w-1/2 h-[4vh] py-2.5 rounded-[12px] bg-white text-[#267bb0] font-extrabold text-xs hover:bg-white/95 active:scale-95 transition-all cursor-pointer shadow-lg text-center flex items-center justify-center"
+                        title="Confirmar y guardar la fecha y hora"
+                      >
+                        Confirmar
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
+          {/* ÚNICA VÍA PARA MANDAR A SUBIR/PUBLICAR: BOTÓN DE PALOMITA (✓) */}
           <button
-            onClick={() => handlePublish(false)}
+            onClick={handleCheckmarkPublish}
             disabled={isPublishing}
             className="w-full text-white rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50"
             style={{
@@ -1596,7 +1845,7 @@ export default function PostEditorWorkspace({
                 'linear-gradient(45deg, #383838 0%, #7A7A7A 100%) padding-box, linear-gradient(-45deg, #383838 0%, #7A7A7A 100%) border-box',
               backgroundClip: 'padding-box, border-box',
             }}
-            title="Confirmar y publicar esta variación"
+            title="Confirmar y publicar las variaciones de este proyecto"
           >
             {isPublishing ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1619,22 +1868,81 @@ export default function PostEditorWorkspace({
         </div>
       </div>
 
-      {/* TOAST FEEDBACK FLOATING */}
+      {/* AVISO FLOTANTE NARANJA DEL SISTEMA ("Faltan bloques por programar...") */}
+      <AnimatePresence>
+        {orangeWarningMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-7 right-7 z-50 rounded-[22px] shadow-2xl border bg-orange-500 text-white border-orange-400 flex flex-col justify-between items-center select-none"
+            style={{
+              width: '18.5vw',
+              minHeight: '16.5vh',
+              paddingLeft: '1.4vw',
+              paddingRight: '1.4vw',
+              paddingTop: '.5vh',
+              paddingBottom: '1.5vh',
+            }}
+          >
+            <div className="flex items-center justify-start gap-2.5 w-full flex-1">
+              <svg className="w-5.5 h-5.5 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="leading-snug text-[1.6vh] font-[500] text-left flex-1">{orangeWarningMessage}</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-2.5 w-full pt-1.5 border-t h-[4vh] border-white/20">
+              <button
+                onClick={() => {
+                  setOrangeWarningMessage(null);
+                  setPendingPublishArgs(null);
+                }}
+                className="w-[8vw] h-[3.5vh] px-4 py-1.5 rounded-full text-[1.7vh] font-[500] bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer flex items-center justify-center"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  const args = pendingPublishArgs || { isScheduled: false };
+                  setOrangeWarningMessage(null);
+                  setPendingPublishArgs(null);
+                  proceedWithPublish(args.isScheduled, true);
+                }}
+                className="w-[8vw] h-[3.5vh] px-4.5 py-1.5 rounded-full text-[1.6vh] font-[600] bg-white text-orange-600 hover:bg-orange-50 transition-all shadow-sm cursor-pointer flex items-center justify-center"
+              >
+                Continuar
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TOAST FEEDBACK FLOATING (AZUL TRASLÚCIDO CON BORDE Y TEXTO AZUL SÓLIDO, DESAPARECE EN 7s) */}
       <AnimatePresence>
         {statusMessage && (
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-bold shadow-xl border flex items-center gap-3 ${statusType === 'error'
-              ? 'bg-red-600 text-white border-red-500'
-              : 'bg-black text-white border-black/20'
+            className={`fixed bottom-6 right-6 z-50 rounded-[22px] shadow-2xl border flex items-center justify-between gap-3 backdrop-blur-md select-none ${statusType === 'error'
+              ? 'bg-red-600/90 text-white border-red-500'
+              : 'bg-[#267bb0]/20 text-[#175278] border-[#267bb0]'
               }`}
+            style={{
+              width: '18.5vw',
+              minHeight: '10vh',
+              paddingLeft: '1.4vw',
+              paddingRight: '1.4vw',
+              paddingTop: '1.5vh',
+              paddingBottom: '1.5vh',
+            }}
           >
-            <span>{statusMessage}</span>
+            <span className="leading-relaxed text-left flex-1 font-[500] text-[1.45vh]">{statusMessage}</span>
             <button
               onClick={() => setStatusMessage(null)}
-              className="text-white/80 hover:text-white font-black text-sm"
+              className="text-[#175278] hover:text-[#0f3752] font-black text-2xl w-8 h-8 rounded-full hover:bg-black/10 flex items-center justify-center cursor-pointer flex-shrink-0 transition-colors ml-1"
+              title="Cerrar aviso"
             >
               ✕
             </button>
