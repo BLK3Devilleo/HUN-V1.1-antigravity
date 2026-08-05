@@ -80,7 +80,6 @@ export async function publishPostAction(payload: PublishPostPayload) {
     let webhookUrl: string | undefined = process.env.N8N_WEBHOOK_URL;
 
     if (process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL) {
-      // Intentar buscar por UUID si es válido
       let orgData = null;
       if (rawOrgId && isUuid(rawOrgId)) {
         const { data } = await dbClient
@@ -91,7 +90,6 @@ export async function publishPostAction(payload: PublishPostPayload) {
         orgData = data;
       }
 
-      // Fallback: Si no hay UUID o no se encontró, traer la primera organización activa
       if (!orgData) {
         const { data } = await dbClient
           .from('organizations')
@@ -109,9 +107,7 @@ export async function publishPostAction(payload: PublishPostPayload) {
       }
     }
 
-    console.log('[publishPostAction] Webhook URL objetivo:', webhookUrl || 'NINGUNO CONFIGURADO');
-
-    // 2. Guardar Causa / Publicación en Supabase Central si hay cliente configurado
+    // 2. Guardar Causa / Publicación en Supabase Central
     let causeId: string | undefined;
 
     if (process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL) {
@@ -147,7 +143,47 @@ export async function publishPostAction(payload: PublishPostPayload) {
       }
     }
 
-    // 3. Disparar Webhook a n8n para envío a redes sociales
+    // 3. Preparar los datos binarios en Base64 para que n8n pueda procesar los archivos directamente
+    const mediaBinaries: Array<{ url: string; base64: string; mime_type: string; file_name: string }> = [];
+
+    if (payload.mediaUrls && payload.mediaUrls.length > 0) {
+      for (let i = 0; i < payload.mediaUrls.length; i++) {
+        const url = payload.mediaUrls[i];
+        if (!url) continue;
+
+        try {
+          if (url.startsWith('data:')) {
+            const parts = url.split(';base64,');
+            const mimeType = parts[0].replace('data:', '');
+            const base64Data = parts[1] || '';
+            mediaBinaries.push({
+              url,
+              base64: base64Data,
+              mime_type: mimeType,
+              file_name: `media_${i + 1}`,
+            });
+          } else if (url.startsWith('http://') || url.startsWith('https://')) {
+            const imgRes = await fetch(url);
+            if (imgRes.ok) {
+              const arrayBuf = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(arrayBuf).toString('base64');
+              const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+              const fileNameFromUrl = url.split('/').pop() || `media_${i + 1}.jpg`;
+              mediaBinaries.push({
+                url,
+                base64: base64Data,
+                mime_type: mimeType,
+                file_name: fileNameFromUrl,
+              });
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('[publishPostAction] No se pudo convertir URL a binario base64:', url, fetchErr);
+        }
+      }
+    }
+
+    // 4. Disparar Webhook a n8n para envío a redes sociales
     let webhookDispatched = false;
     let webhookErrorMsg: string | null = null;
 
@@ -163,6 +199,7 @@ export async function publishPostAction(payload: PublishPostPayload) {
             title: payload.title || '',
             caption: payload.caption,
             media_urls: payload.mediaUrls,
+            media_binaries: mediaBinaries,
             platforms: payload.platforms,
             org_id: validOrgId || rawOrgId,
             timestamp: new Date().toISOString(),
