@@ -44,8 +44,8 @@ export default function WebhookSettingsForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      <div className="space-y-1.5">
+        <label className="block text-[11px] font-extrabold text-[#444444] uppercase tracking-wider flex items-center gap-1.5">
           <LinkIcon className="w-3.5 h-3.5 text-purple-600" />
           URL Endpoint del Webhook (n8n)
         </label>
@@ -55,16 +55,16 @@ export default function WebhookSettingsForm() {
           placeholder="https://n8n.tudominio.com/webhook/..."
           value={webhookUrl}
           onChange={(e) => setWebhookUrl(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 focus:bg-white transition-all shadow-sm"
+          className="w-full px-4.5 py-3 rounded-2xl bg-white border border-black/15 text-black placeholder:text-[#999999] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
         />
-        <p className="mt-1.5 text-[11px] text-slate-500 font-medium">
-          Asegúrate de que la URL empiece con <code className="bg-slate-100 text-purple-700 px-1 py-0.5 rounded font-mono text-[10px]">https://</code> y apunte al disparador del flujo en n8n.
+        <p className="mt-1 text-[11px] text-[#666666] font-medium">
+          Asegúrate de que la URL empiece con <code className="bg-[#EFEFEF] text-purple-700 px-1.5 py-0.5 rounded font-mono text-[10px]">https://</code> y apunte al disparador del flujo en n8n.
         </p>
       </div>
 
       {message && (
         <div
-          className={`p-4 rounded-xl text-xs font-bold flex items-center gap-2.5 ${
+          className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-2.5 ${
             message.type === 'success'
               ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
               : 'bg-rose-50 text-rose-900 border border-rose-200'
@@ -79,11 +79,11 @@ export default function WebhookSettingsForm() {
         </div>
       )}
 
-      <div className="pt-1">
+      <div className="pt-2">
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-3 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="px-6 py-3 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider rounded-full shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
         >
           {loading ? (
             <>

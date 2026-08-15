@@ -91,7 +91,7 @@ const INITIAL_PROJECTS: ProjectDraft[] = [
 export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<SelectedMedia[]>([]);
-  const [isEditorActive, setIsEditorActive] = useState(true);
+  const [isEditorActive, setIsEditorActive] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState('org-1');
   const [activeModal, setActiveModal] = useState<'org' | 'profile' | 'storage' | 'reach' | 'planner' | 'comments' | null>(null);
 
