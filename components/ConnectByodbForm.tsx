@@ -53,9 +53,9 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       {/* Status Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-slate-900/5 border border-slate-900/10 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4.5 rounded-[20px] bg-white border border-black/10 shadow-2xs gap-3">
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center">
             <span
@@ -70,9 +70,9 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Estado BYODB</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#666666]">Estado BYODB</span>
               <span
-                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                   isConnected
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     : 'bg-amber-100 text-amber-800 border border-amber-200'
@@ -81,8 +81,8 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
                 {isConnected ? 'Activo y Vinculado' : 'Sin Conexión'}
               </span>
             </div>
-            <p className="text-xs font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5 text-slate-400" />
+            <p className="text-xs font-semibold text-black mt-0.5 flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-[#666666]" />
               {isConnected && connectedDomain
                 ? `Instancia Supabase: ${connectedDomain}`
                 : 'Ninguna base de datos privada conectada.'}
@@ -92,12 +92,12 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
 
         <button
           onClick={() => setShowForm((v) => !v)}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`px-4.5 py-2.5 rounded-full text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-95 ${
             showForm
-              ? 'bg-slate-200 text-slate-800 hover:bg-slate-300'
+              ? 'bg-[#EFEFEF] text-black hover:bg-black/10'
               : isConnected
-              ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm'
-              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20'
+              ? 'bg-black text-white hover:bg-neutral-800'
+              : 'bg-[#267bb0] text-white hover:bg-[#1f6693]'
           }`}
         >
           <span>{showForm ? 'Cerrar Formulario' : isConnected ? 'Reconfigurar Credenciales' : 'Conectar Supabase'}</span>
@@ -115,21 +115,21 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-3">
               {/* Supabase URL */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-blue-600" />
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-extrabold text-[#444444] uppercase tracking-wider flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-[#267bb0]" />
                   URL del Proyecto Supabase
                 </label>
                 <input
                   type="url"
                   placeholder="https://xxxxxxxxxxx.supabase.co"
                   {...register('supabase_url')}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                  className="w-full px-4.5 py-3 rounded-2xl bg-white border border-black/15 text-black placeholder:text-[#999999] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#267bb0]/20 focus:border-[#267bb0] transition-all shadow-2xs"
                 />
                 {errors.supabase_url && (
-                  <p className="mt-1.5 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {errors.supabase_url.message}
                   </p>
@@ -137,25 +137,25 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
               </div>
 
               {/* Supabase Anon Key */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-blue-600" />
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-extrabold text-[#444444] uppercase tracking-wider flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-[#267bb0]" />
                   Clave Pública Anon Key (JWT)
                 </label>
                 <input
                   type="password"
                   placeholder="eyJhbGciOiJIUzI1NiIs..."
                   {...register('supabase_anon_key')}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                  className="w-full px-4.5 py-3 rounded-2xl bg-white border border-black/15 text-black placeholder:text-[#999999] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#267bb0]/20 focus:border-[#267bb0] transition-all shadow-2xs"
                 />
                 {errors.supabase_anon_key && (
-                  <p className="mt-1.5 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {errors.supabase_anon_key.message}
                   </p>
                 )}
-                <p className="mt-1.5 text-[11px] text-slate-500 font-medium">
-                  Copiar desde tu dashboard de Supabase: <span className="font-semibold text-slate-700">Project Settings → API → Project API Keys</span>
+                <p className="mt-1 text-[11px] text-[#666666] font-medium">
+                  Copiar desde tu dashboard de Supabase: <span className="font-bold text-black">Project Settings → API → Project API Keys</span>
                 </p>
               </div>
 
@@ -164,7 +164,7 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`p-4 rounded-xl text-xs font-bold flex items-start gap-2.5 ${
+                  className={`p-4 rounded-2xl text-xs font-bold flex items-start gap-2.5 ${
                     serverResult.success
                       ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
                       : 'bg-rose-50 text-rose-900 border border-rose-200'
@@ -185,11 +185,11 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-extrabold uppercase tracking-wider transition-all duration-200 shadow-md cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-black hover:bg-neutral-800 disabled:opacity-50 text-white text-xs font-extrabold uppercase tracking-wider transition-all duration-200 shadow-2xs cursor-pointer active:scale-95"
                 >
                   {isSubmitting ? (
                     <>
@@ -210,7 +210,7 @@ export default function ConnectByodbForm({ isConnected, connectedDomain, onSucce
                     setShowForm(false);
                     setServerResult(null);
                   }}
-                  className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                  className="px-5 py-3 rounded-full bg-white hover:bg-black/5 border border-black/15 text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-2xs active:scale-95"
                 >
                   Cancelar
                 </button>
