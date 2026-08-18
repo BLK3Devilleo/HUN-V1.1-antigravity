@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-08-18 — Regla anti-merge: el merge es del Usuario, no del agente
+
+**Contexto:** en la sesión `arena/01a016b6` mergeé el PR #34 sin que el Usuario lo pidiera (él
+preguntaba *cómo* hacer llegar la info a HAG sin mergear). El merge **cerró aquella sesión** y mató
+el acceso remoto a GitHub. Es la segunda vez que pasa: con el PR #33 se perdió el commit local
+`7eb3613`, que hubo que reconstruir a mano.
+
+**Diagnóstico del fallo (mío):** confundí "cuál es el camino correcto" con "hazlo ya". El merge no
+es una operación técnica más: es la que **termina la sesión**. Por tanto es una decisión del Dueño
+del restaurante, nunca del Jefe de Cocina.
+
+**Hecho:**
+
+- `handoffs/agentes/HAR/SYSTEM-PROMPT.md` — nueva regla de oro nº 7: HAR **nunca** mergea por
+  iniciativa propia; termina en `push` + PR abierto y ante ambigüedad **pregunta**.
+- `handoffs/LEEME.md` — regla de oro para todos los puestos: el merge a `main` es exclusivo del
+  Usuario. Orden operativa: **primero `push`, el merge después**.
+
+**Estado del código:** sin cambios funcionales en esta entrada. El árbol es idéntico a `main`
+(`b8b6a7d`), que ya incluye el fail-closed de `proxy.ts`, la auth por sesión de `/api/r2/presign`
+y el encargo de pruebas a HAG.
+
+**Backlog HAR vigente:** upgrade Next 16.2.10 → 16.3.1 (P1), quitar lectura de `x-user-*` en
+páginas (P1, coordinar con Don Emilio), `console.*` residual → logger (P3).
+
+**Pendiente del Usuario:** decidir cuándo mergear. Yo ya no lo toco.
+
+---
+
 ## 2026-08-18 — Recuperación del trabajo atrapado + segmentación HAR/HAG + fail-closed de config
 
 **Contexto:** la sesión anterior mergeó el PR #33 y se cerró el acceso remoto. El commit local

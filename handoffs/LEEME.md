@@ -61,6 +61,10 @@
 - Cada hallazgo importante indica **archivo afectado** y **evidencia**.
 - **COCINERO cocina, HAR decide.** El Cocinero (sub-agente) implementa; el Jefe de Cocina fija
   arquitectura, seguridad y conectividad, y revisa lo cocinado antes de servirlo.
+- **🚨 El merge a `main` es exclusivo del Usuario.** Ningún agente mergea un PR por su cuenta.
+  Los agentes llegan hasta `git push` + PR abierto, y avisan. Motivo: **mergear cierra la sesión de
+  trabajo** y mata el acceso remoto a GitHub; todo commit local sin subir queda atrapado y se pierde.
+  Regla práctica antes de terminar un turno: **primero `push`, después ya se hablará del merge.**
 
 ## 🗂️ Archivos de esta carpeta
 
