@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-08-18 — Recuperación del trabajo atrapado + segmentación HAR/HAG + fail-closed de config
+
+**Contexto:** la sesión anterior mergeó el PR #33 y se cerró el acceso remoto. El commit local
+`7eb3613` (segmentación HAR vs HAG) **nunca llegó a GitHub** y no existe en este checkout.
+Esta sesión (`arena/01a016b6-hun-v1-1-antigravity`) recupera ese trabajo y lo sube.
+
+**Hecho:**
+
+- Recreado `handoffs/mensajes/2026-08-18_HAR-a-HAG_pruebas-entorno-real.md` (5 pruebas:
+  health, R2, OAuth, n8n/programación, BYODB). Corregido F-02: el código sí envía `blocks[]`.
+- `proxy.ts` — si faltan `NEXT_PUBLIC_SUPABASE_CENTRAL_URL` / `ANON_KEY`, ya no lanza 500.
+  Fail-closed: `auth.denied reason=missing_config` + redirect `/login?error=auth_config_error`
+  (dashboard) o HTTP 503 JSON (API).
+- `app/api/r2/presign/route.ts` — deja de confiar en `x-user-org-id`; usa `getAuthContext()`.
+
+**Backlog HAR (código, sandbox):**
+
+| Tarea | Archivos | Prioridad | Estado |
+|---|---|---|---|
+| 500 sin env vars → fail-closed | `proxy.ts` | P1 | hecho en esta entrada |
+| Auth de presign por sesión, no cabecera | `app/api/r2/presign` | P1 | hecho en esta entrada |
+| Quitar lectura de `x-user-*` en páginas | páginas dashboard (zona Don Emilio) | P1 | coordinar con Don Emilio |
+| Upgrade Next 16.2.10 → 16.3.1 | `package.json` | P1 | pendiente |
+| `console.*` residual → logger | `dashboard.ts`, `media.ts`, `moderation.ts`, `post.ts` | P3 | pendiente |
+
+**Delegado a HAG:** pruebas de entorno real (R2, OAuth, n8n, BYODB). Ver mensaje de esta fecha.
+
+**Delegado a Don Emilio:** cablear `useR2Upload` en el dashboard (zona congelada).
+
+**Estado:** `npx tsc --noEmit` limpio. Pendiente push/PR de esta rama.
+
+---
+
 ## 2026-08-18 — Observabilidad: logger, health endpoint y logging de auditoría
 
 **Contexto:** dar visibilidad al backend ("cámaras de vigilancia") y ordenar el buzón de agentes
