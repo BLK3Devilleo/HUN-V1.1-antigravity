@@ -6,6 +6,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createLocalClient } from '@/lib/supabase';
 import { encryptText, decryptText } from '@/lib/crypto';
 import { getAuthContext } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // ============================================================
 // Schema Zod para validar las credenciales BYODB
@@ -51,6 +52,7 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
   const { user, orgId, role } = await getAuthContext();
 
   if (!user || !orgId) {
+    logger.warn('action.byodb_connect.denied', { reason: 'unauthenticated' });
     return {
       success: false,
       message: 'No se pudo identificar tu organización',
@@ -58,7 +60,10 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
     };
   }
 
+  logger.info('action.byodb_connect.start', { user: user.email || user.id, org: orgId, role });
+
   if (role !== 'owner' && role !== 'admin') {
+    logger.warn('action.byodb_connect.denied', { user: user.email || user.id, org: orgId, role, reason: 'insufficient_permissions' });
     return {
       success: false,
       message: 'Permisos insuficientes',
@@ -123,6 +128,8 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
       error: updateError.message,
     };
   }
+
+  logger.info('action.byodb_connect.ok', { user: user.email || user.id, org: orgId });
 
   return {
     success: true,
