@@ -377,8 +377,28 @@ export default function PostEditorWorkspace({
     setStatusMessage(null);
     try {
       const { publishPostAction } = await import('@/app/actions/post');
+
+      const mappedBlocks = variationBlocks.map((block) => ({
+        id: block.id,
+        number: block.number,
+        caption: block.caption || '',
+        platforms: block.selectedPlatforms || [],
+        mediaUrls: block.thumbnails || [],
+        scheduledDate: block.scheduledDate,
+        scheduledTime: block.scheduledTime,
+        scheduledTimestamp: block.scheduledDate && block.scheduledTime
+          ? `${block.scheduledDate}T${block.scheduledTime}:00Z`
+          : undefined,
+      }));
+
       const res = await publishPostAction({
+        projectId: currentActiveProjectId || undefined,
         title: postTitle,
+        sameDayScheduled: sameDayForProject,
+        baseScheduledDate: scheduledDate || undefined,
+        baseScheduledTime: scheduledTime || undefined,
+        blocks: mappedBlocks,
+        // Fallbacks
         caption: activeBlock.caption || '',
         mediaUrls: activeBlock.thumbnails || [],
         platforms: activeBlock.selectedPlatforms || [],
@@ -393,8 +413,8 @@ export default function PostEditorWorkspace({
         } else {
           setStatusMessage(
             res.webhookDispatched
-              ? `Variación #${activeBlock.number} enviada al Webhook de n8n con éxito.`
-              : `Variación #${activeBlock.number} enviada exitosamente.`
+              ? `Variaciones de la causa enviadas al Webhook de n8n con éxito.`
+              : `Variaciones procesadas exitosamente.`
           );
         }
       } else {
