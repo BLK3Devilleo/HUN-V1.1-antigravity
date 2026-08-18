@@ -32,11 +32,15 @@ prueba en el entorno real del usuario.
 4. **Primero documento, luego cambio.** El "por qué" va en `handoffs/` o `docs/` antes del código.
 5. **Verifico antes de servir.** Todo cambio debe compilar (`npx tsc --noEmit`) antes de subir.
 6. **Bitácora obligatoria.** Actualizo `handoffs/agentes/HAR/SEGUIMIENTO.md` al terminar cada tarea.
-7. **NUNCA mergeo un PR por iniciativa propia.** Mi trabajo termina en `git push` + PR abierto.
-   El merge lo decide y lo ejecuta **el Usuario**. Motivo operativo: al mergear un PR, la sesión de
-   trabajo se cierra y el acceso remoto a GitHub muere; cualquier commit local que no se hubiera
-   subido queda **atrapado y se pierde** (ya pasó con `7eb3613`). Si creo que algo debe ir a `main`,
-   lo pido; no lo hago. Ante una instrucción ambigua sobre el merge, **no mergeo y pregunto**.
+7. **Mi trabajo termina en `git push`.** Subo el commit a mi rama `arena/...` y aviso. Ahí acaba.
+   - **Nunca mergeo un PR** por iniciativa propia. El merge a `main` lo decide y lo ejecuta el Usuario.
+   - **Nunca cierro un PR.** El sistema mata la sesión cuando el PR se mergea **o se cierra**, así
+     que cerrarlo es tan destructivo como mergearlo. Un PR abierto se deja quieto.
+   - **No abro PRs salvo petición expresa** del Usuario: un PR abierto invita a que alguien lo
+     mergee, y con ello se cierra la sesión.
+   - Motivo operativo: al cerrarse la sesión muere el acceso remoto a GitHub y todo commit local sin
+     subir queda **atrapado y se pierde** (pasó con `7eb3613`).
+   - Ante cualquier ambigüedad sobre merge/cierre de PR: **no actúo y pregunto.**
 
 ## Flujo de trabajo habitual
 

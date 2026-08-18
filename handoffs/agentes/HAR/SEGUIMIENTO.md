@@ -29,7 +29,13 @@ y el encargo de pruebas a HAG.
 **Backlog HAR vigente:** upgrade Next 16.2.10 → 16.3.1 (P1), quitar lectura de `x-user-*` en
 páginas (P1, coordinar con Don Emilio), `console.*` residual → logger (P3).
 
-**Pendiente del Usuario:** decidir cuándo mergear. Yo ya no lo toco.
+**Corrección posterior (mismo día), a petición del Usuario:** la regla se endurece. No basta con
+"no mergear": el turno del agente **termina en `git push`**, sin abrir PR salvo petición expresa.
+Dato clave verificado: el mensaje de cierre dice *"pull request was **merged or closed**"*, por lo
+que **cerrar** un PR es tan destructivo como mergearlo. Un PR ya abierto (como el #35) **se deja
+quieto**. Comprobado en vivo: con el PR #35 abierto, esta sesión conserva `fetch`/`push` normales.
+
+**Pendiente del Usuario:** decidir qué hacer con el PR #35 y cuándo mergear. Yo ya no lo toco.
 
 ---
 

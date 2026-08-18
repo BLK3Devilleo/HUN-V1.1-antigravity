@@ -61,10 +61,15 @@
 - Cada hallazgo importante indica **archivo afectado** y **evidencia**.
 - **COCINERO cocina, HAR decide.** El Cocinero (sub-agente) implementa; el Jefe de Cocina fija
   arquitectura, seguridad y conectividad, y revisa lo cocinado antes de servirlo.
-- **🚨 El merge a `main` es exclusivo del Usuario.** Ningún agente mergea un PR por su cuenta.
-  Los agentes llegan hasta `git push` + PR abierto, y avisan. Motivo: **mergear cierra la sesión de
-  trabajo** y mata el acceso remoto a GitHub; todo commit local sin subir queda atrapado y se pierde.
-  Regla práctica antes de terminar un turno: **primero `push`, después ya se hablará del merge.**
+- **🚨 El agente termina en `push`. Nada más.** Ningún agente mergea ni cierra PRs, y no abre uno
+  salvo que el Usuario lo pida. El turno acaba con el commit subido a su rama `arena/...` y un aviso.
+  Motivo: **mergear _o cerrar_ un PR cierra la sesión de trabajo** y mata el acceso remoto a GitHub;
+  cualquier commit local sin subir queda atrapado y se pierde (pasó con `7eb3613`).
+  - Abrir un PR es inofensivo por sí solo, pero **un PR abierto invita a que alguien lo mergee**,
+    así que por defecto no se abre.
+  - Si ya hay un PR abierto, **se deja quieto**: cerrarlo es tan destructivo como mergearlo.
+  - El merge a `main` lo decide y lo ejecuta **solo el Usuario**.
+  - Regla práctica: **primero `push`; del merge ya se hablará.**
 
 ## 🗂️ Archivos de esta carpeta
 
