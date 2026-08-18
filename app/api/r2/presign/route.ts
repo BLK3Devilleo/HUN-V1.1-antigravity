@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generatePresignedUploadUrl } from '@/lib/r2';
+import { getAuthContext } from '@/lib/auth';
 
 const PresignSchema = z.object({
   fileName: z.string().min(1).max(260),
@@ -9,9 +10,9 @@ const PresignSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // Verificar que el org_id venga del proxy (Next.js 16 - usuario autenticado)
-  const orgId = request.headers.get('x-user-org-id');
-  if (!orgId) {
+  // Fuente de verdad: sesión + profiles. No confiar en x-user-org-id.
+  const { user, orgId } = await getAuthContext();
+  if (!user || !orgId) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 

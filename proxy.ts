@@ -23,6 +23,58 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Función auxiliar para generar URLs de redirección seguras
+  const getSafeRedirectUrl = (targetPath: string, errorParam?: string) => {
+    let targetUrl: URL;
+
+    if (request.nextUrl.hostname === 'localhost' || request.nextUrl.hostname === '127.0.0.1') {
+      targetUrl = new URL(targetPath, request.nextUrl.origin);
+    } else {
+      const appUrlEnv = process.env.NEXT_PUBLIC_APP_URL;
+      if (appUrlEnv && appUrlEnv.startsWith('http')) {
+        targetUrl = new URL(targetPath, appUrlEnv);
+      } else {
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        const isInternalDockerHost = !host || host.includes('0.0.0.0') || /^[a-f0-9]{12}/i.test(host.split(':')[0]);
+
+        if (host && !isInternalDockerHost) {
+          targetUrl = new URL(targetPath, `${proto}://${host}`);
+        } else {
+          targetUrl = new URL(targetPath, request.url);
+        }
+      }
+    }
+
+    if (errorParam) {
+      targetUrl.searchParams.set('error', errorParam);
+    }
+    return targetUrl;
+  };
+
+  const denyMissingConfig = (missing: string[]) => {
+    logger.error('auth.denied', { reason: 'missing_config', method, path: pathname, missing, clientIp });
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: 'auth_config_error', message: 'Falta configuración de autenticación' },
+        { status: 503 }
+      );
+    }
+    return NextResponse.redirect(getSafeRedirectUrl('/login', 'auth_config_error'));
+  };
+
+  // Fail-closed: sin URL/key de Supabase no se crea el cliente (evita 500).
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY;
+  const missingPublicConfig = [
+    !supabaseUrl ? 'NEXT_PUBLIC_SUPABASE_CENTRAL_URL' : null,
+    !supabaseAnonKey ? 'NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY' : null,
+  ].filter((name): name is string => Boolean(name));
+
+  if (missingPublicConfig.length > 0 || !supabaseUrl || !supabaseAnonKey) {
+    return denyMissingConfig(missingPublicConfig);
+  }
+
   let supabaseResponse = NextResponse.next({
     request: {
       headers: requestHeaders,
@@ -31,8 +83,8 @@ export async function proxy(request: NextRequest) {
 
   // Inicializar el cliente del servidor de Supabase (SSR)
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -54,36 +106,21 @@ export async function proxy(request: NextRequest) {
   );
 
   // Recuperar sesión: Se utiliza getUser para validación real contra el servidor
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Función auxiliar para generar URLs de redirección seguras
-  const getSafeRedirectUrl = (pathname: string, errorParam?: string) => {
-    let targetUrl: URL;
-
-    if (request.nextUrl.hostname === 'localhost' || request.nextUrl.hostname === '127.0.0.1') {
-      targetUrl = new URL(pathname, request.nextUrl.origin);
-    } else {
-      const appUrlEnv = process.env.NEXT_PUBLIC_APP_URL;
-      if (appUrlEnv && appUrlEnv.startsWith('http')) {
-        targetUrl = new URL(pathname, appUrlEnv);
-      } else {
-        const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
-        const proto = request.headers.get('x-forwarded-proto') || 'https';
-        const isInternalDockerHost = !host || host.includes('0.0.0.0') || /^[a-f0-9]{12}/i.test(host.split(':')[0]);
-
-        if (host && !isInternalDockerHost) {
-          targetUrl = new URL(pathname, `${proto}://${host}`);
-        } else {
-          targetUrl = new URL(pathname, request.url);
-        }
-      }
+  let user: { id: string; email?: string } | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'getUser failed';
+    logger.error('auth.denied', { reason: 'auth_unreachable', method, path: pathname, error: message, clientIp });
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: 'auth_unreachable', message: 'No se pudo validar la sesión' },
+        { status: 503 }
+      );
     }
-
-    if (errorParam) {
-      targetUrl.searchParams.set('error', errorParam);
-    }
-    return targetUrl;
-  };
+    return NextResponse.redirect(getSafeRedirectUrl('/login', 'auth_unreachable'));
+  }
 
   // Detección de entorno local (localhost / 127.0.0.1)
   const isLocalHost = request.nextUrl.hostname === 'localhost' || request.nextUrl.hostname === '127.0.0.1';
