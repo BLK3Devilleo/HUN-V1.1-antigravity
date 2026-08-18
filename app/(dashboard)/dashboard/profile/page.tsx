@@ -1,4 +1,3 @@
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -13,13 +12,16 @@ import {
   Settings,
   Shield,
 } from 'lucide-react';
+import { getAuthContext } from '@/lib/auth';
 
 export default async function ProfilePage() {
-  const headerList = await headers();
-  const orgId = headerList.get('x-user-org-id') ?? '';
-  const userRole = headerList.get('x-user-role') || (process.env.NODE_ENV === 'development' ? 'admin' : 'member');
-  const userEmail = headerList.get('x-user-email') || 'dev-user@example.com';
-  const userName = userEmail.split('@')[0].replace('.', ' ');
+  // Datos del perfil resueltos contra la sesión real, no contra cabeceras.
+  // Se retira también el email ficticio 'dev-user@example.com': mostraba una
+  // identidad inventada en lugar de la del usuario autenticado.
+  const { user, orgId, role } = await getAuthContext();
+  const userRole = role ?? 'member';
+  const userEmail = user?.email ?? '';
+  const userName = userEmail ? userEmail.split('@')[0].replace('.', ' ') : 'Usuario';
 
   return (
     <div className="min-h-screen bg-[#F6F6F6] text-black px-4 py-8 sm:px-8 md:px-12 font-sans">

@@ -144,6 +144,16 @@ export async function proxy(request: NextRequest) {
         },
       });
     }
+    // Las rutas de API deben responder 401 JSON. Un redirect 307 a una
+    // página HTML rompe a cualquier cliente `fetch`, que recibiría el HTML
+    // del login con estado 200 y lo interpretaría como éxito.
+    if (isApiRoute) {
+      logger.info('auth.denied', { reason: 'no_session', method, path: pathname, clientIp });
+      return NextResponse.json(
+        { error: 'unauthorized', message: 'No autenticado' },
+        { status: 401 }
+      );
+    }
     logger.info('auth.redirect_login', { reason: 'no_session', method, path: pathname, clientIp });
     return NextResponse.redirect(getSafeRedirectUrl('/login'));
   }
@@ -156,6 +166,12 @@ export async function proxy(request: NextRequest) {
   if (!serviceRoleKey) {
     // No conceder privilegios por defecto: denegar el acceso.
     logger.error('auth.denied', { reason: 'missing_service_key', method, path: pathname });
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: 'auth_config_error', message: 'Falta configuración de autenticación' },
+        { status: 503 }
+      );
+    }
     return NextResponse.redirect(getSafeRedirectUrl('/login', 'auth_config_error'));
   }
 
@@ -180,6 +196,12 @@ export async function proxy(request: NextRequest) {
   if (error || !profile) {
     // No escalar a 'owner': denegar el acceso si no se puede resolver el perfil.
     logger.warn('auth.denied', { reason: 'profile_not_found', method, path: pathname, user: user.email || user.id });
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: 'profile_not_found', message: 'No se pudo resolver tu perfil' },
+        { status: 403 }
+      );
+    }
     return NextResponse.redirect(getSafeRedirectUrl('/login', 'profile_not_found'));
   }
 

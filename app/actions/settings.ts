@@ -1,149 +1,134 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
-import { getAuthContext } from '@/lib/auth';
+import { createAdminClient, createSessionClient } from '@/lib/supabase-server';
+import { authorize } from '@/lib/authz';
 import { logger } from '@/lib/logger';
+import { isUuid } from '@/lib/validation';
 
-function isUuid(str: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-}
+/**
+ * Valida la URL de un webhook n8n antes de persistirla.
+ *
+ * Se rechazan destinos internos (localhost, IPs privadas, `.internal`) porque
+ * el servidor hará peticiones salientes a esta URL: sin esta comprobación, un
+ * admin podría convertir la aplicación en un proxy hacia la red interna (SSRF).
+ */
+function validateWebhookUrl(rawUrl: string): { ok: true; url: string } | { ok: false; error: string } {
+  const trimmed = rawUrl.trim();
 
-function getAdminClient() {
-  const serviceRoleKey =
-    process.env.SUPABASE_CENTRAL_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (trimmed === '') {
+    // Cadena vacía = desactivar el webhook. Es un caso válido.
+    return { ok: true, url: '' };
+  }
 
-  if (!serviceRoleKey) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { ok: false, error: 'La URL del webhook no es válida.' };
+  }
 
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    serviceRoleKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }
-  );
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return { ok: false, error: 'El webhook debe usar http o https.' };
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const isPrivateHost =
+    host === 'localhost' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    host === '::1' ||
+    host === '[::1]';
+
+  if (isPrivateHost) {
+    return { ok: false, error: 'El webhook no puede apuntar a una dirección interna o privada.' };
+  }
+
+  return { ok: true, url: trimmed };
 }
 
 export async function saveN8nWebhook(webhookUrl: string) {
+  const event = 'action.webhook_save';
+
   try {
-    // Resolver contexto de autenticación de forma segura (no confiar en headers)
-    const { user, orgId: rawOrgId, role: userRole } = await getAuthContext();
+    // Solo owner/admin pueden cambiar la configuración de la organización.
+    const auth = await authorize(event, 'admin');
+    if (!auth.ok) {
+      return { success: false, error: auth.error };
+    }
+    const { user, orgId, role } = auth.context;
 
-    if (!user || !rawOrgId) {
-      logger.warn('action.webhook_save.denied', { reason: 'unauthenticated' });
-      return { success: false, error: 'No se pudo identificar tu organización' };
+    const validated = validateWebhookUrl(webhookUrl);
+    if (!validated.ok) {
+      logger.warn(`${event}.rejected`, { user: user.email || user.id, org: orgId, reason: 'invalid_url' });
+      return { success: false, error: validated.error };
     }
 
-    if (userRole !== 'owner' && userRole !== 'admin') {
-      logger.warn('action.webhook_save.denied', { user: user.email || user.id, org: rawOrgId, role: userRole, reason: 'insufficient_permissions' });
-      return { success: false, error: 'Solo los administradores o propietarios pueden configurar Webhooks' };
+    logger.info(`${event}.start`, { user: user.email || user.id, org: orgId, role });
+
+    const dbClient = createAdminClient() ?? (await createSessionClient(true));
+
+    if (!isUuid(orgId)) {
+      return { success: false, error: 'El identificador de la organización no es válido.' };
     }
 
-    logger.info('action.webhook_save.start', { user: user.email || user.id, org: rawOrgId, role: userRole });
-
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch (error) {}
-          },
-        },
-      }
-    );
-
-    const adminClient = getAdminClient();
-    const dbClient = adminClient || supabase;
-
-    // Buscar el ID real de la organización (UUID) del usuario autenticado
-    const { data: orgData } = isUuid(rawOrgId)
-      ? await dbClient
-          .from('organizations')
-          .select('id, settings')
-          .eq('id', rawOrgId)
-          .maybeSingle()
-      : { data: null };
+    const { data: orgData } = await dbClient
+      .from('organizations')
+      .select('id, settings')
+      .eq('id', orgId)
+      .maybeSingle();
 
     if (!orgData) {
-      return { success: false, error: 'No existe ninguna organización activa en la base de datos para asignar el Webhook.' };
+      return {
+        success: false,
+        error: 'No existe ninguna organización activa en la base de datos para asignar el Webhook.',
+      };
     }
 
-    const currentSettings: any = orgData.settings || {};
-
-    // Actualizar webhook
-    const newSettings = {
-      ...currentSettings,
-      n8n_webhook_url: webhookUrl,
-    };
+    const currentSettings: Record<string, unknown> = orgData.settings || {};
 
     const { error: updateError } = await dbClient
       .from('organizations')
-      .update({ settings: newSettings })
+      .update({ settings: { ...currentSettings, n8n_webhook_url: validated.url } })
       .eq('id', orgData.id);
 
     if (updateError) {
       throw new Error(`Error al actualizar organización: ${updateError.message}`);
     }
 
-    logger.info('action.webhook_save.ok', { user: user.email || user.id, org: orgData.id });
+    logger.info(`${event}.ok`, { user: user.email || user.id, org: orgData.id });
 
     return { success: true };
-  } catch (error: any) {
-    logger.error('action.webhook_save.failed', { error: error.message });
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    logger.error(`${event}.failed`, { error: message });
+    return { success: false, error: message };
   }
 }
 
 export async function getN8nWebhook() {
   try {
-    // Resolver contexto de autenticación de forma segura (no confiar en headers)
-    const { orgId: rawOrgId } = await getAuthContext();
+    const auth = await authorize('action.webhook_get');
+    if (!auth.ok) return { url: '' };
 
-    if (!rawOrgId) return { url: '' };
+    const { orgId } = auth.context;
+    if (!isUuid(orgId)) return { url: '' };
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch (error) {}
-          },
-        },
-      }
-    );
+    const dbClient = createAdminClient() ?? (await createSessionClient());
 
-    const adminClient = getAdminClient();
-    const dbClient = adminClient || supabase;
-
-    const { data: orgData } = isUuid(rawOrgId)
-      ? await dbClient
-          .from('organizations')
-          .select('settings')
-          .eq('id', rawOrgId)
-          .maybeSingle()
-      : { data: null };
+    const { data: orgData } = await dbClient
+      .from('organizations')
+      .select('settings')
+      .eq('id', orgId)
+      .maybeSingle();
 
     return { url: orgData?.settings?.n8n_webhook_url || '' };
-  } catch (error) {
+  } catch {
     return { url: '' };
   }
 }

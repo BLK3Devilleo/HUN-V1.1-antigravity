@@ -163,3 +163,68 @@ código/mensaje de error (sin la URL ni la anon key).
   upgrade Next, o cableado R2 junto a Don Emilio).
 - **Don Emilio (par, no HAG):** cablear `useR2Upload` en el dashboard cuando el backend de R2
   quede verificado.
+
+---
+
+## 📌 ANEXO (2026-08-19) — Cambios de backend que afectan a estas pruebas
+
+> Añadido por **HAR** después de la ronda de mejoras de backend. **Lee esto antes de ejecutar**:
+> algunos resultados esperados han cambiado, y una prueba ya no puede dar el resultado previsto.
+
+### Lo que cambió y cómo afecta a cada prueba
+
+**Prueba 1 — Health.** Ya no devuelve `200` siempre. Ahora distingue liveness de readiness:
+
+| Situación | Respuesta |
+|---|---|
+| Config crítica presente | `200` con `"status":"ok"`, `"ready":true` |
+| Falta `SUPABASE_URL`/`ANON_KEY` | `503` con `"status":"degraded"` y `missing_critical` |
+
+Con `.env.local` correcto debes ver **`200` y `missing_critical: []`**. Si ves `503`, el propio
+JSON te dice qué falta.
+
+**Prueba 2 — R2.** ⚠️ **El sub-caso "sin login, solo cabecera" ya no puede dar URL válida.**
+Era el riesgo N-02 y está cerrado: `/api/r2/presign` ignora `x-user-org-id` y resuelve la
+organización desde la sesión. Verificado en local: con cabecera falsificada devuelve
+**`401` JSON** (`{"error":"unauthorized"}`), no un redirect HTML.
+
+Lo que sí hay que probar ahora, **con sesión iniciada**:
+
+1. `presign` → `PUT` a `uploadUrl` → abrir `publicUrl`.
+2. `saveMediaRecord` **rechaza** URLs fuera del bucket o de otra organización. Prueba a mano una
+   URL ajena: debe fallar con "no pertenece a tu organización".
+
+> 🐛 **Bug corregido que hay que confirmar:** `useR2Upload` leía `url` del presign, pero la API
+> devuelve `uploadUrl`. Era `undefined`, así que **el archivo nunca llegaba a R2**. Si en pruebas
+> anteriores la subida "no hacía nada", esta era la causa.
+
+**Prueba 3 — Rutas.** `/dashboard/admin` ya **no** concede rol `admin` automáticamente en
+desarrollo (ese fallback era un agujero). Necesitas un perfil con rol real `owner`/`admin`/
+`moderator` en la tabla `profiles`, o verás "Acceso Denegado" — eso es lo correcto.
+`/dashboard/profile` muestra el email real de la sesión, ya no `dev-user@example.com`.
+
+**Prueba 4 — n8n.** El envío ahora tiene **timeout de 10 s y 3 reintentos** con backoff.
+En los logs verás `webhook.retrying` y `webhook.ok`/`webhook.failed` con el nº de intento.
+Sigue siendo válido comprobar que llegan `blocks[]` y `scheduled_timestamp`.
+
+⚠️ **Nuevo límite a tener en cuenta:** los medios adjuntos en base64 se acotan a **8 MB por
+archivo y 24 MB por publicación** (antes no había tope y un vídeo tumbaba el contenedor por OOM).
+Lo que excede **no se pierde**: se envía su URL en `media_urls` para que n8n lo descargue.
+Si pruebas con un vídeo grande, verás `publish.media_skipped reason=too_large`. Es lo esperado.
+
+**Prueba 5 — BYODB.** Sin cambios funcionales.
+
+### Prueba 6 (NUEVA) — Webhook con URL interna, debe rechazarse
+
+En `/dashboard/settings`, intenta guardar como webhook: `http://localhost:5678/test`
+y `http://192.168.1.50/hook`.
+
+**Esperado:** ambos **rechazados** ("no puede apuntar a una dirección interna o privada").
+Es una protección anti-SSRF: sin ella, el servidor podía usarse para alcanzar la red interna.
+Una URL pública normal de n8n debe seguir guardándose sin problema.
+
+### Contexto de versión
+
+Se subió **Next.js 16.2.10 → 16.3.1** (cerraba advisories de SSRF y DoS). `npm audit` pasa de
+**4 vulnerabilidades high a 0**. Si al arrancar ves algo raro que antes no pasaba, dilo: puede ser
+regresión del upgrade.

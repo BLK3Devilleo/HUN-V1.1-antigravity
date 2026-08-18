@@ -1,7 +1,6 @@
 import { getByodbStatus } from '@/app/actions/byodb';
 import ConnectByodbForm from '@/components/ConnectByodbForm';
 import WebhookSettingsForm from './WebhookSettingsForm';
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -16,13 +15,15 @@ import {
   Sparkles,
   Lock
 } from 'lucide-react';
+import { getAuthContext } from '@/lib/auth';
 
 export default async function SettingsPage() {
   const byodbStatus = await getByodbStatus();
-  const headerList = await headers();
-  const orgId = headerList.get('x-user-org-id') ?? '';
-  const userRole = headerList.get('x-user-role') || (process.env.NODE_ENV === 'development' ? 'admin' : 'member');
-  const userEmail = headerList.get('x-user-email') ?? '';
+  // Identidad desde la sesión, sin fallback de rol 'admin' en desarrollo.
+  const { user, orgId: resolvedOrgId, role } = await getAuthContext();
+  const orgId = resolvedOrgId ?? '';
+  const userRole = role ?? 'member';
+  const userEmail = user?.email ?? '';
 
   return (
     <div

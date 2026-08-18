@@ -1,11 +1,10 @@
 'use server';
 
 import { z } from 'zod';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
 import { createLocalClient } from '@/lib/supabase';
+import { createSessionClient } from '@/lib/supabase-server';
 import { encryptText, decryptText } from '@/lib/crypto';
-import { getAuthContext } from '@/lib/auth';
+import { authorize } from '@/lib/authz';
 import { logger } from '@/lib/logger';
 
 // ============================================================
@@ -48,28 +47,21 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
 
   const { supabase_url, supabase_anon_key } = parsed.data;
 
-  // 2. Resolver contexto de autenticación de forma segura (no confiar en headers)
-  const { user, orgId, role } = await getAuthContext();
-
-  if (!user || !orgId) {
-    logger.warn('action.byodb_connect.denied', { reason: 'unauthenticated' });
+  // 2. Autorización centralizada: owner/admin, resuelto contra `profiles`.
+  const auth = await authorize('action.byodb_connect', 'admin');
+  if (!auth.ok) {
     return {
       success: false,
-      message: 'No se pudo identificar tu organización',
-      error: 'Sesión expirada. Por favor vuelve a iniciar sesión.',
+      message:
+        auth.reason === 'insufficient_permissions'
+          ? 'Permisos insuficientes'
+          : 'No se pudo identificar tu organización',
+      error: auth.error,
     };
   }
+  const { user, orgId, role } = auth.context;
 
   logger.info('action.byodb_connect.start', { user: user.email || user.id, org: orgId, role });
-
-  if (role !== 'owner' && role !== 'admin') {
-    logger.warn('action.byodb_connect.denied', { user: user.email || user.id, org: orgId, role, reason: 'insufficient_permissions' });
-    return {
-      success: false,
-      message: 'Permisos insuficientes',
-      error: 'Solo los administradores o el propietario pueden modificar la configuración BYODB.',
-    };
-  }
 
   // 3. Verificar conectividad con el Supabase local ANTES de guardar
   try {
@@ -96,19 +88,10 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
     };
   }
 
-  // 4. Guardar credenciales cifradas en Supabase Central
-  const cookieStore = await cookies();
-  const supabaseCentralServer = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-    {
-      cookies: {
-        get: (name) => cookieStore.get(name)?.value,
-        set: () => {},
-        remove: () => {},
-      },
-    }
-  );
+  // 4. Guardar credenciales cifradas en Supabase Central.
+  //    El RLS (`org_admin_update`) ya restringe la escritura a owner/admin de
+  //    la propia organización, así que basta con el cliente de sesión.
+  const supabaseCentralServer = await createSessionClient(true);
 
   // Usar pgcrypto vía función SQL sería ideal. Como mitigación usamos AES-256-GCM en Node.
   // La clave de cifrado viene de la variable de entorno del servidor (nunca expuesta al cliente).
@@ -144,28 +127,20 @@ export async function getByodbStatus(): Promise<{
   connected: boolean;
   url: string | null;
 }> {
-  const { orgId } = await getAuthContext();
+  const auth = await authorize('action.byodb_status');
+  if (!auth.ok) return { connected: false, url: null };
 
-  if (!orgId) return { connected: false, url: null };
+  const { orgId } = auth.context;
 
-  const cookieStore = await cookies();
-  const supabaseCentralServer = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-    {
-      cookies: {
-        get: (name) => cookieStore.get(name)?.value,
-        set: () => {},
-        remove: () => {},
-      },
-    }
-  );
+  // Solo lectura: esta acción se invoca durante el render de la página de
+  // ajustes, donde Next.js no permite escribir cookies.
+  const supabaseCentralServer = await createSessionClient();
 
   const { data } = await supabaseCentralServer
     .from('organizations')
     .select('byodb_url_enc')
     .eq('id', orgId)
-    .single();
+    .maybeSingle();
 
   const encryptedUrl = data?.byodb_url_enc ?? null;
   let urlDomain = null;

@@ -1,16 +1,18 @@
-import { headers } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ArrowLeft, ShieldAlert, ShieldCheck, Sparkles } from 'lucide-react';
 import AdminModerationPanel from './ModerationPanel';
+import { getAuthContext } from '@/lib/auth';
+import { createSessionClient } from '@/lib/supabase-server';
+import { hasAtLeast } from '@/lib/authz';
 
 export default async function AdminPage() {
-  const headerList = await headers();
-  const orgId = headerList.get('x-user-org-id') ?? '';
-  const userRole = headerList.get('x-user-role') || (process.env.NODE_ENV === 'development' ? 'admin' : 'member');
+  // Identidad y rol resueltos contra `profiles`, no contra cabeceras. Además
+  // se elimina el fallback a 'admin' en desarrollo: concedía permisos de
+  // moderación a cualquiera con NODE_ENV=development.
+  const { orgId, role } = await getAuthContext();
+  const userRole = role ?? 'member';
 
-  if (userRole !== 'owner' && userRole !== 'admin' && userRole !== 'moderator') {
+  if (!orgId || !hasAtLeast(userRole, 'moderator')) {
     return (
       <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center p-6 text-black font-sans">
         <div className="bg-white border border-black/10 rounded-[32px] p-8 max-w-md w-full text-center shadow-xl space-y-4">
@@ -36,17 +38,7 @@ export default async function AdminPage() {
   }
 
   // Cargar causas pendientes
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = await createSessionClient();
 
   const { data: causes } = await supabase
     .from('causes')

@@ -1,8 +1,8 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { getAuthContext } from '@/lib/auth';
+import { createSessionClient } from '@/lib/supabase-server';
+import { authorize } from '@/lib/authz';
+import { logger } from '@/lib/logger';
 
 export interface DashboardPost {
   id: string;
@@ -28,115 +28,87 @@ export interface DashboardDataResult {
   reachCount: number;
   plannerCount: number;
   commentsCount: number;
+  /**
+   * `true` cuando no se pudieron cargar datos reales (sin sesión o error de
+   * consulta). Permite a la UI mostrar un estado vacío honesto en lugar de
+   * cifras inventadas.
+   */
+  isEmpty: boolean;
 }
 
-const MOCK_ORGANIZATIONS: DashboardOrg[] = [
-  {
-    id: 'org-1',
-    name: '[MOCK] Organización número 1',
-    posts: [
-      { id: 'mock-1', title: '[MOCK] Salvemos los árboles', active: true },
-      { id: 'mock-2', title: '[MOCK] Esterilización de lomitos', active: false },
-      { id: 'mock-3', title: '[MOCK] Técnicas de cuidado ambiental', active: false },
-      { id: 'mock-4', title: '[MOCK] Cultivos en casa fáciles', active: false },
-    ],
-  },
-  {
-    id: 'org-2',
-    name: '[MOCK] Organización número 2',
-    posts: [
-      { id: 'mock-5', title: '[MOCK] Anuncio de Producto B', active: true },
-      { id: 'mock-6', title: '[MOCK] Campaña de Verano', active: false },
-    ],
-  },
-  {
-    id: 'org-3',
-    name: '[MOCK] Organización número 3',
-    posts: [
-      { id: 'mock-7', title: '[MOCK] Boletín Mensual', active: true },
-    ],
-  },
-];
+/** Cuota de almacenamiento del plan, en GB. */
+const STORAGE_QUOTA_GB = 3688;
+
+/**
+ * Estado vacío. Sustituye a los antiguos `MOCK_ORGANIZATIONS`, que devolvían
+ * organizaciones y métricas ficticias ("252.000 de alcance") indistinguibles
+ * de datos reales para el usuario final.
+ */
+const EMPTY_RESULT: DashboardDataResult = {
+  organizations: [],
+  activeOrgId: '',
+  storage: { usedGB: 0, totalGB: STORAGE_QUOTA_GB },
+  reachCount: 0,
+  plannerCount: 0,
+  commentsCount: 0,
+  isEmpty: true,
+};
 
 export async function getDashboardData(): Promise<DashboardDataResult> {
   try {
-    // Resolver org de forma segura (no confiar en headers)
-    const { orgId: userOrgId } = await getAuthContext();
+    const auth = await authorize('action.dashboard_data');
+    if (!auth.ok) return EMPTY_RESULT;
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY || '',
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {},
-        },
-      }
-    );
+    const { orgId } = auth.context;
+    const supabase = await createSessionClient();
 
-    // 1. Intentar consultar causas reales de la organización en Supabase Central
-    const realOrgs: DashboardOrg[] = [];
-
-    if (userOrgId) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('id', userOrgId)
-        .single();
-
-      const { data: causesData } = await supabase
+    const [{ data: orgData }, { data: causesData, error: causesError }] = await Promise.all([
+      supabase.from('organizations').select('id, name').eq('id', orgId).maybeSingle(),
+      supabase
         .from('causes')
-        .select('id, title, description, media_url, created_at')
-        .eq('org_id', userOrgId)
-        .order('created_at', { ascending: false });
+        .select('id, title, description, media_url, status, created_at')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ]);
 
-      if (orgData) {
-        const postsList: DashboardPost[] = (causesData || []).map((c, idx) => ({
-          id: c.id,
-          title: c.title || `Publicación #${idx + 1}`,
-          description: c.description,
-          media_url: c.media_url,
-          active: idx === 0,
-        }));
-
-        realOrgs.push({
-          id: orgData.id,
-          name: orgData.name,
-          posts: postsList,
-        });
-      }
+    if (!orgData) {
+      logger.warn('action.dashboard_data.empty', { org: orgId, reason: 'org_not_found' });
+      return EMPTY_RESULT;
+    }
+    if (causesError) {
+      logger.error('action.dashboard_data.query_failed', { org: orgId, error: causesError.message });
     }
 
-    // 2. Si no hay datos reales o no hay organizaciones devueltas, combinar con MOCK data etiquetada
-    const finalOrgs = realOrgs.length > 0 ? realOrgs : MOCK_ORGANIZATIONS;
-    const activeOrgId = userOrgId || finalOrgs[0].id;
+    const causes = causesData || [];
 
-    // Conteo de causas para métricas
-    const totalCauses = realOrgs[0]?.posts.length || 0;
+    const posts: DashboardPost[] = causes.map((c, idx) => ({
+      id: c.id,
+      title: c.title || `Publicación #${idx + 1}`,
+      description: c.description ?? undefined,
+      media_url: c.media_url ?? undefined,
+      active: idx === 0,
+    }));
+
+    // Métricas derivadas de datos reales. Las que aún no tienen origen en la
+    // base de datos (alcance, comentarios) se devuelven a 0 en lugar de
+    // simularse: es preferible un cero honesto a una cifra inventada.
+    const scheduledCount = causes.filter(
+      (c) => c.status === 'approved' || c.status === 'pending_moderation'
+    ).length;
 
     return {
-      organizations: finalOrgs,
-      activeOrgId,
-      storage: {
-        usedGB: totalCauses > 0 ? totalCauses * 50 : 3500, // Estimado dinámico
-        totalGB: 3688,
-      },
-      reachCount: totalCauses > 0 ? totalCauses * 1250 : 252000,
-      plannerCount: totalCauses > 0 ? totalCauses : 8,
-      commentsCount: totalCauses > 0 ? totalCauses * 12 : 100,
+      organizations: [{ id: orgData.id, name: orgData.name, posts }],
+      activeOrgId: orgData.id,
+      storage: { usedGB: 0, totalGB: STORAGE_QUOTA_GB },
+      reachCount: 0,
+      plannerCount: scheduledCount,
+      commentsCount: 0,
+      isEmpty: causes.length === 0,
     };
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    return {
-      organizations: MOCK_ORGANIZATIONS,
-      activeOrgId: 'org-1',
-      storage: { usedGB: 3500, totalGB: 3688 },
-      reachCount: 252000,
-      plannerCount: 8,
-      commentsCount: 100,
-    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    logger.error('action.dashboard_data.failed', { error: message });
+    return EMPTY_RESULT;
   }
 }

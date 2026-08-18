@@ -1,23 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Layers } from 'lucide-react';
 import FeedGrid from '@/components/dashboard/FeedGrid';
+import { createSessionClient } from '@/lib/supabase-server';
 
 export const revalidate = 60;
 
 export default async function GlobalFeedPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = await createSessionClient();
 
   const { data: causes } = await supabase
     .from('causes')
@@ -34,15 +23,32 @@ export default async function GlobalFeedPage() {
     .order('created_at', { ascending: false })
     .limit(30);
 
-  const formattedCauses = (causes || []).map((c: any) => ({
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    media_url: c.media_url,
-    created_at: c.created_at,
-    total_shares: c.total_shares || 0,
-    organizations: c.organizations ? { name: c.organizations.name } : undefined,
-  }));
+  // Supabase tipa los joins como array u objeto según la relación, así que se
+  // normaliza aquí en lugar de silenciarlo con `any`.
+  interface CauseRow {
+    id: string;
+    title: string | null;
+    description: string | null;
+    media_url: string | null;
+    created_at: string;
+    total_shares: number | null;
+    organizations?: { name: string } | { name: string }[] | null;
+  }
+
+  const formattedCauses = ((causes || []) as unknown as CauseRow[]).map((c) => {
+    const org = Array.isArray(c.organizations) ? c.organizations[0] : c.organizations;
+    // `FeedGrid` espera cadenas: se normalizan los nulos de la base de datos
+    // aquí en vez de dejar que lleguen como `null` a la interfaz.
+    return {
+      id: c.id,
+      title: c.title ?? 'Publicación sin título',
+      description: c.description ?? '',
+      media_url: c.media_url ?? '',
+      created_at: c.created_at,
+      total_shares: c.total_shares || 0,
+      organizations: org ? { name: org.name } : undefined,
+    };
+  });
 
   return (
     <div className="min-h-screen bg-[#F6F6F6] text-black px-4 py-8 sm:px-8 md:px-12 font-sans">

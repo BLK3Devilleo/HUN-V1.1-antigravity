@@ -1,55 +1,54 @@
 'use server';
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createSessionClient } from '@/lib/supabase-server';
+import { authorize } from '@/lib/authz';
+import { dispatchWebhook } from '@/lib/webhook';
 import { logger } from '@/lib/logger';
 
+/**
+ * Registra en la base de datos un archivo ya subido a R2.
+ *
+ * Se ejecuta DESPUÉS de que el navegador haya hecho el PUT a la URL
+ * pre-firmada, y es el paso que cierra el flujo de subida de media.
+ */
 export async function saveMediaRecord(mediaUrl: string, fileName: string) {
+  const event = 'action.media_save';
+
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch (error) {}
-          },
-        },
-      }
-    );
+    const auth = await authorize(event);
+    if (!auth.ok) {
+      return { success: false, error: auth.error };
+    }
+    const { user, orgId } = auth.context;
 
-    // 1. Obtener usuario autenticado
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado');
+    // La URL debe pertenecer a nuestro bucket público de R2. Sin esta
+    // comprobación se podría inyectar cualquier URL externa en la BD y
+    // acabaría propagándose a n8n y a las redes sociales.
+    const publicBase = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    if (!publicBase) {
+      logger.error(`${event}.failed`, { reason: 'missing_r2_public_url' });
+      return { success: false, error: 'El almacenamiento de medios no está configurado.' };
+    }
+    if (!mediaUrl.startsWith(`${publicBase.replace(/\/$/, '')}/`)) {
+      logger.warn(`${event}.rejected`, { user: user.id, org: orgId, reason: 'url_outside_bucket' });
+      return { success: false, error: 'La URL del archivo no pertenece al almacenamiento de la aplicación.' };
     }
 
-    // 2. Obtener el org_id del usuario
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('org_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile) {
-      throw new Error('Perfil no encontrado');
+    // El objeto debe estar dentro del prefijo de la propia organización, tal
+    // y como lo genera `generatePresignedUploadUrl` (`orgs/{orgId}/...`).
+    if (!mediaUrl.includes(`/orgs/${orgId}/`)) {
+      logger.warn(`${event}.rejected`, { user: user.id, org: orgId, reason: 'cross_tenant_path' });
+      return { success: false, error: 'La URL del archivo no pertenece a tu organización.' };
     }
 
-    logger.info('action.media_save.start', { user: user.id, org: profile.org_id, file_name: fileName });
+    logger.info(`${event}.start`, { user: user.id, org: orgId, file_name: fileName });
 
-    // 3. Guardar en la Base de Datos Central como una Causa en borrador
+    const supabase = await createSessionClient(true);
+
     const { data: cause, error: dbError } = await supabase
       .from('causes')
       .insert({
-        org_id: profile.org_id,
+        org_id: orgId,
         creator_id: user.id,
         title: `Upload: ${fileName}`,
         description: 'Auto-generado desde la subida rápida de dashboard',
@@ -63,42 +62,34 @@ export async function saveMediaRecord(mediaUrl: string, fileName: string) {
       throw new Error(`Error en BD: ${dbError.message}`);
     }
 
-    // 4. Obtener el Webhook Configurado de la Organización
     const { data: orgData } = await supabase
       .from('organizations')
       .select('settings')
-      .eq('id', profile.org_id)
-      .single();
+      .eq('id', orgId)
+      .maybeSingle();
 
-    const tenantWebhook = orgData?.settings?.n8n_webhook_url;
-    const webhookUrl = tenantWebhook || process.env.N8N_WEBHOOK_URL;
+    const webhookUrl = orgData?.settings?.n8n_webhook_url || process.env.N8N_WEBHOOK_URL;
 
-    // 5. Disparar Webhook a n8n
-    if (webhookUrl) {
-      try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event: 'media_uploaded',
-            cause_id: cause?.id,
-            media_url: mediaUrl,
-            file_name: fileName,
-            org_id: profile.org_id,
-          }),
-        });
-        console.log('Webhook disparado exitosamente a n8n');
-      } catch (webhookErr) {
-        console.error('Error disparando webhook:', webhookErr);
-        // No lanzamos error para no frenar la UI, el archivo ya se guardó
-      }
-    }
+    // El webhook es informativo: si falla, el archivo ya está guardado y la
+    // operación se considera correcta.
+    const webhook = await dispatchWebhook(webhookUrl, 'media_uploaded', {
+      cause_id: cause?.id,
+      media_url: mediaUrl,
+      file_name: fileName,
+      org_id: orgId,
+    });
 
-    logger.info('action.media_save.ok', { user: user.id, org: profile.org_id, cause_id: cause?.id });
+    logger.info(`${event}.ok`, {
+      user: user.id,
+      org: orgId,
+      cause_id: cause?.id,
+      webhook: webhook.ok,
+    });
 
-    return { success: true, causeId: cause?.id };
-  } catch (error: any) {
-    logger.error('action.media_save.failed', { error: error.message });
-    return { success: false, error: error.message };
+    return { success: true, causeId: cause?.id, webhookDispatched: webhook.ok };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    logger.error(`${event}.failed`, { error: message });
+    return { success: false, error: message };
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createSessionClient } from '@/lib/supabase-server';
+import { logger } from '@/lib/logger';
 
 function getSafeOrigin(request: Request): string {
   const requestUrl = new URL(request.url);
@@ -37,32 +37,18 @@ export async function GET(request: Request) {
   const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard';
 
   if (code) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Si se invoca desde Server Component, se ignora
-            }
-          },
-        },
-      }
-    );
+    // Route Handler: sí puede escribir las cookies de sesión.
+    const supabase = await createSessionClient(true);
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      logger.info('auth.callback.ok', { next });
       return NextResponse.redirect(`${safeOrigin}${next}`);
     }
+
+    logger.warn('auth.callback.failed', { reason: 'exchange_failed', error: error.message });
+  } else {
+    logger.warn('auth.callback.failed', { reason: 'missing_code' });
   }
 
   // Si ocurre un error, redirigir a login con un parámetro de error

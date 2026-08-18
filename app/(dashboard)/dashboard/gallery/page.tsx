@@ -1,31 +1,23 @@
-import { headers } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ArrowLeft, Image as ImageIcon, Sparkles } from 'lucide-react';
 import GalleryWorkspace from '@/components/dashboard/GalleryWorkspace';
+import { getAuthContext } from '@/lib/auth';
+import { createSessionClient } from '@/lib/supabase-server';
 
 export default async function GalleryPage() {
-  const headerList = await headers();
-  const orgId = headerList.get('x-user-org-id') ?? '';
+  // Fuente de verdad: sesión + tabla `profiles`, no la cabecera `x-user-org-id`
+  // (una cabecera puede falsificarse si algo llega sin pasar por el proxy).
+  const { orgId } = await getAuthContext();
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = await createSessionClient();
 
-  const { data: causes } = await supabase
-    .from('causes')
-    .select('id, title, media_url, created_at, status')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
+  const { data: causes } = orgId
+    ? await supabase
+        .from('causes')
+        .select('id, title, media_url, created_at, status')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+    : { data: [] };
 
   const galleryItems = (causes || [])
     .filter(c => c.media_url && c.media_url.trim() !== '')
