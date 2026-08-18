@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { getAuthContext } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export interface VariationBlockPayload {
   id?: string;
@@ -116,6 +117,8 @@ export async function publishPostAction(payload: PublishPostPayload) {
     if (!rawOrgId) {
       return { success: false, error: 'Perfil sin organización asignada' };
     }
+
+    logger.info('action.publish.start', { user: user.email || user.id, org: rawOrgId, role, title: payload.title });
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -282,6 +285,8 @@ export async function publishPostAction(payload: PublishPostPayload) {
       };
     }
 
+    logger.info('action.publish.ok', { user: user.email || user.id, org: validOrgId, cause_id: primaryCauseId });
+
     return {
       success: true,
       causeId: primaryCauseId,
@@ -289,6 +294,7 @@ export async function publishPostAction(payload: PublishPostPayload) {
       message: '¡Publicación enviada al webhook de n8n exitosamente!',
     };
   } catch (error: any) {
+    logger.error('action.publish.failed', { error: error.message });
     logToConsole(`Error crítico en publishPostAction: ${error.message}`);
     return {
       success: false,

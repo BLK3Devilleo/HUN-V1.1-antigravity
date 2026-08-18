@@ -2,13 +2,22 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
 
+  const startedAt = performance.now();
+  const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
+  const method = request.method;
+  const pathname = request.nextUrl.pathname;
+
   // Solo interceptamos las rutas protegidas (dashboard y api)
   const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/';
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api') && !request.nextUrl.pathname.startsWith('/api/auth');
+  const isApiRoute =
+    request.nextUrl.pathname.startsWith('/api') &&
+    !request.nextUrl.pathname.startsWith('/api/auth') &&
+    !request.nextUrl.pathname.startsWith('/api/health');
 
   if (!isDashboardRoute && !isApiRoute) {
     return NextResponse.next();
@@ -87,6 +96,7 @@ export async function proxy(request: NextRequest) {
   // Si no está autenticado
   if (!user) {
     if (devBypassEnabled) {
+      logger.warn('auth.dev_bypass', { method, path: pathname, clientIp });
       // Cabeceras de prueba SOLO para desarrollo local explícito
       requestHeaders.set('x-user-org-id', 'org-1');
       requestHeaders.set('x-user-role', 'admin');
@@ -97,6 +107,7 @@ export async function proxy(request: NextRequest) {
         },
       });
     }
+    logger.info('auth.redirect_login', { reason: 'no_session', method, path: pathname, clientIp });
     return NextResponse.redirect(getSafeRedirectUrl('/login'));
   }
 
@@ -107,7 +118,7 @@ export async function proxy(request: NextRequest) {
 
   if (!serviceRoleKey) {
     // No conceder privilegios por defecto: denegar el acceso.
-    console.error('[Proxy] No se encontró la Service Role Key. Denegando acceso (configuración incompleta).');
+    logger.error('auth.denied', { reason: 'missing_service_key', method, path: pathname });
     return NextResponse.redirect(getSafeRedirectUrl('/login', 'auth_config_error'));
   }
 
@@ -131,13 +142,20 @@ export async function proxy(request: NextRequest) {
 
   if (error || !profile) {
     // No escalar a 'owner': denegar el acceso si no se puede resolver el perfil.
-    console.warn('[Proxy Auth] No se pudo resolver el perfil del usuario:', error?.message);
+    logger.warn('auth.denied', { reason: 'profile_not_found', method, path: pathname, user: user.email || user.id });
     return NextResponse.redirect(getSafeRedirectUrl('/login', 'profile_not_found'));
   }
 
   requestHeaders.set('x-user-org-id', profile.org_id);
   requestHeaders.set('x-user-role', profile.role);
   requestHeaders.set('x-user-email', user.email || '');
+
+  logger.info('auth.granted', {
+    user: user.email || user.id,
+    org: profile.org_id,
+    role: profile.role,
+    dur_ms: Math.round(performance.now() - startedAt),
+  });
 
   return NextResponse.next({
     request: {

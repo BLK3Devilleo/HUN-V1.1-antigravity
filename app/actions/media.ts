@@ -2,6 +2,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/logger';
 
 export async function saveMediaRecord(mediaUrl: string, fileName: string) {
   try {
@@ -41,6 +42,8 @@ export async function saveMediaRecord(mediaUrl: string, fileName: string) {
     if (!profile) {
       throw new Error('Perfil no encontrado');
     }
+
+    logger.info('action.media_save.start', { user: user.id, org: profile.org_id, file_name: fileName });
 
     // 3. Guardar en la Base de Datos Central como una Causa en borrador
     const { data: cause, error: dbError } = await supabase
@@ -91,9 +94,11 @@ export async function saveMediaRecord(mediaUrl: string, fileName: string) {
       }
     }
 
+    logger.info('action.media_save.ok', { user: user.id, org: profile.org_id, cause_id: cause?.id });
+
     return { success: true, causeId: cause?.id };
   } catch (error: any) {
-    console.error('Error saving media record:', error);
+    logger.error('action.media_save.failed', { error: error.message });
     return { success: false, error: error.message };
   }
 }

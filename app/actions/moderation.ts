@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/logger';
 
 export async function moderateCause(causeId: string, decision: 'approved' | 'rejected', reason?: string) {
   try {
@@ -38,6 +39,8 @@ export async function moderateCause(causeId: string, decision: 'approved' | 'rej
     if (!['owner', 'admin', 'moderator'].includes(profile.role)) {
       throw new Error('No tienes permisos de moderador');
     }
+
+    logger.info('action.moderate.start', { user: user.id, org: profile.org_id, role: profile.role, cause_id: causeId });
 
     // 3. Actualizar el estado de la Causa
     const { data: updatedCause, error: updateError } = await supabase
@@ -91,9 +94,11 @@ export async function moderateCause(causeId: string, decision: 'approved' | 'rej
       }
     }
 
+    logger.info('action.moderate.ok', { user: user.id, org: profile.org_id, cause_id: causeId, decision });
+
     return { success: true, status: updatedCause.status };
   } catch (error: any) {
-    console.error('Error moderating cause:', error);
+    logger.error('action.moderate.failed', { cause_id: causeId, error: error.message });
     return { success: false, error: error.message };
   }
 }

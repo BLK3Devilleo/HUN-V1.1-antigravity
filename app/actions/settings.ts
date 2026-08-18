@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { getAuthContext } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 function isUuid(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -34,12 +35,16 @@ export async function saveN8nWebhook(webhookUrl: string) {
     const { user, orgId: rawOrgId, role: userRole } = await getAuthContext();
 
     if (!user || !rawOrgId) {
+      logger.warn('action.webhook_save.denied', { reason: 'unauthenticated' });
       return { success: false, error: 'No se pudo identificar tu organización' };
     }
 
     if (userRole !== 'owner' && userRole !== 'admin') {
+      logger.warn('action.webhook_save.denied', { user: user.email || user.id, org: rawOrgId, role: userRole, reason: 'insufficient_permissions' });
       return { success: false, error: 'Solo los administradores o propietarios pueden configurar Webhooks' };
     }
+
+    logger.info('action.webhook_save.start', { user: user.email || user.id, org: rawOrgId, role: userRole });
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -92,9 +97,11 @@ export async function saveN8nWebhook(webhookUrl: string) {
       throw new Error(`Error al actualizar organización: ${updateError.message}`);
     }
 
+    logger.info('action.webhook_save.ok', { user: user.email || user.id, org: orgData.id });
+
     return { success: true };
   } catch (error: any) {
-    console.error('Error guardando webhook:', error);
+    logger.error('action.webhook_save.failed', { error: error.message });
     return { success: false, error: error.message };
   }
 }
