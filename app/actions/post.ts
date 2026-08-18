@@ -2,7 +2,8 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
+import { getAuthContext } from '@/lib/auth';
 
 export interface VariationBlockPayload {
   id?: string;
@@ -21,7 +22,6 @@ export interface PublishPostPayload {
   caption?: string;
   mediaUrls?: string[];
   platforms?: string[];
-  orgId?: string;
   sameDayScheduled?: boolean;
   baseScheduledDate?: string;
   baseScheduledTime?: string;
@@ -107,8 +107,15 @@ export async function publishPostAction(payload: PublishPostPayload) {
   logToConsole(`Iniciando publishPostAction. Título: "${payload.title || 'Sin Título'}", Proyecto: ${payload.projectId || 'N/A'}`);
 
   try {
-    const headerList = await headers();
-    const headerOrgId = headerList.get('x-user-org-id');
+    // Resolver contexto de autenticación de forma segura (no confiar en headers/payload)
+    const { user, orgId: rawOrgId, role } = await getAuthContext();
+
+    if (!user) {
+      return { success: false, error: 'Usuario no autenticado' };
+    }
+    if (!rawOrgId) {
+      return { success: false, error: 'Perfil sin organización asignada' };
+    }
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -128,46 +135,21 @@ export async function publishPostAction(payload: PublishPostPayload) {
       }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-    let rawOrgId = payload.orgId || headerOrgId || '';
-
-    if (user && !payload.orgId) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id')
-        .eq('id', user.id)
-        .single();
-      if (profile?.org_id) {
-        rawOrgId = profile.org_id;
-      }
-    }
-
     const adminClient = getAdminClient();
     const dbClient = adminClient || supabase;
 
-    // 1. Obtener la organización real en la BD y su Webhook N8N
+    // 1. Obtener la organización real (solo la propia) y su Webhook N8N
     let validOrgId: string | null = null;
     let webhookUrl: string | undefined = process.env.N8N_WEBHOOK_URL;
 
     if (process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL) {
-      let orgData = null;
-      if (rawOrgId && isUuid(rawOrgId)) {
-        const { data } = await dbClient
-          .from('organizations')
-          .select('id, settings')
-          .eq('id', rawOrgId)
-          .maybeSingle();
-        orgData = data;
-      }
-
-      if (!orgData) {
-        const { data } = await dbClient
-          .from('organizations')
-          .select('id, settings')
-          .limit(1)
-          .maybeSingle();
-        orgData = data;
-      }
+      const { data: orgData } = isUuid(rawOrgId)
+        ? await dbClient
+            .from('organizations')
+            .select('id, settings')
+            .eq('id', rawOrgId)
+            .maybeSingle()
+        : { data: null };
 
       if (orgData) {
         validOrgId = orgData.id;
@@ -175,6 +157,11 @@ export async function publishPostAction(payload: PublishPostPayload) {
           webhookUrl = orgData.settings.n8n_webhook_url;
         }
       }
+    }
+
+    // Sin organización válida no se publica (sin fallback a "primera org")
+    if (!validOrgId) {
+      return { success: false, error: 'No se encontró la organización del usuario' };
     }
 
     logToConsole(`Webhook URL Objetivo: ${webhookUrl || 'NINGUNO CONFIGURADO'}`);
@@ -212,17 +199,10 @@ export async function publishPostAction(payload: PublishPostPayload) {
     let primaryCauseId: string | undefined;
 
     if (process.env.NEXT_PUBLIC_SUPABASE_CENTRAL_URL) {
-      let initialStatus = 'pending_moderation';
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        if (profile?.role && ['owner', 'admin', 'moderator'].includes(profile.role)) {
-          initialStatus = 'approved';
-        }
-      }
+      const initialStatus =
+        role && ['owner', 'admin', 'moderator'].includes(role)
+          ? 'approved'
+          : 'pending_moderation';
 
       for (const block of processedBlocks) {
         const { data: cause, error: insertErr } = await dbClient
@@ -271,7 +251,7 @@ export async function publishPostAction(payload: PublishPostPayload) {
             media_urls: processedBlocks[0]?.media_urls || payload.mediaUrls || [],
             media_binaries: processedBlocks[0]?.media_binaries || [],
             platforms: processedBlocks[0]?.platforms || payload.platforms || [],
-            org_id: validOrgId || rawOrgId,
+            org_id: validOrgId,
             timestamp: new Date().toISOString(),
           }),
         });

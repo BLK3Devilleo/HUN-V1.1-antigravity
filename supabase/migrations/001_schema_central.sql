@@ -165,23 +165,45 @@ ALTER TABLE public.profiles                   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.causes                     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cause_moderation_reviews   ENABLE ROW LEVEL SECURITY;
 
+-- ============================================================
+-- 8.1 FUNCIONES SECURITY DEFINER — Anti-recursión RLS
+-- ------------------------------------------------------------
+-- Corrigen la recursión infinita de las políticas que consultan
+-- `public.profiles` (p. ej. `profile_org_admin_select`). Al ejecutarse
+-- como DEFINER, estas funciones omiten RLS y no re-disparan las políticas.
+-- `auth.uid()` sigue resolviendo el usuario autenticado de la petición.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_my_org_id()
+RETURNS UUID
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT org_id FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_my_role()
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$;
+
 -- ORGANIZATIONS: Solo miembros de la org pueden ver su organización
 CREATE POLICY "org_member_select"
   ON public.organizations FOR SELECT
-  USING (
-    id IN (
-      SELECT org_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+  USING (id = public.get_my_org_id());
 
 -- ORGANIZATIONS: Solo owner/admin puede actualizar su org
 CREATE POLICY "org_admin_update"
   ON public.organizations FOR UPDATE
   USING (
-    id IN (
-      SELECT org_id FROM public.profiles
-      WHERE id = auth.uid() AND role IN ('owner', 'admin')
-    )
+    id = public.get_my_org_id()
+    AND public.get_my_role() IN ('owner', 'admin')
   );
 
 -- PROFILES: Cada usuario ve solo su propio perfil
@@ -193,10 +215,8 @@ CREATE POLICY "profile_self_select"
 CREATE POLICY "profile_org_admin_select"
   ON public.profiles FOR SELECT
   USING (
-    org_id IN (
-      SELECT org_id FROM public.profiles
-      WHERE id = auth.uid() AND role IN ('owner', 'admin', 'moderator')
-    )
+    org_id = public.get_my_org_id()
+    AND public.get_my_role() IN ('owner', 'admin', 'moderator')
   );
 
 -- PROFILES: Solo el propio usuario puede actualizar su perfil
@@ -212,30 +232,19 @@ CREATE POLICY "causes_approved_select"
 -- CAUSES: Miembros de la org creadora pueden ver sus causas propias
 CREATE POLICY "causes_own_org_select"
   ON public.causes FOR SELECT
-  USING (
-    org_id IN (
-      SELECT org_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+  USING (org_id = public.get_my_org_id());
 
 -- CAUSES: Solo la org creadora puede insertar causas
 CREATE POLICY "causes_org_insert"
   ON public.causes FOR INSERT
-  WITH CHECK (
-    org_id IN (
-      SELECT org_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+  WITH CHECK (org_id = public.get_my_org_id());
 
 -- CAUSES: Solo el creador o admin/moderador puede actualizar
 CREATE POLICY "causes_update_by_creator_or_mod"
   ON public.causes FOR UPDATE
   USING (
     creator_id = auth.uid()
-    OR
-    auth.uid() IN (
-      SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'owner')
-    )
+    OR public.get_my_role() IN ('admin', 'moderator', 'owner')
   );
 
 -- CAUSES: Solo el creador o admin/moderador puede eliminar (Fix E6)
@@ -243,20 +252,13 @@ CREATE POLICY "causes_delete_by_creator_or_mod"
   ON public.causes FOR DELETE
   USING (
     creator_id = auth.uid()
-    OR
-    auth.uid() IN (
-      SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'owner')
-    )
+    OR public.get_my_role() IN ('admin', 'moderator', 'owner')
   );
 
 -- MODERACIÓN: Solo moderadores/admins pueden leer/escribir reviews
 CREATE POLICY "moderation_reviews_moderator"
   ON public.cause_moderation_reviews FOR ALL
-  USING (
-    auth.uid() IN (
-      SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'owner')
-    )
-  );
+  USING (public.get_my_role() IN ('admin', 'moderator', 'owner'));
 
 -- ============================================================
 -- 9. VISTA ÚTIL - Cola de moderación para el Panel Admin

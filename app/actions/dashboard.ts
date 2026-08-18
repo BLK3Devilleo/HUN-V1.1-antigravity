@@ -1,7 +1,8 @@
 'use server';
 
 import { createServerClient } from '@supabase/ssr';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
+import { getAuthContext } from '@/lib/auth';
 
 export interface DashboardPost {
   id: string;
@@ -59,9 +60,8 @@ const MOCK_ORGANIZATIONS: DashboardOrg[] = [
 
 export async function getDashboardData(): Promise<DashboardDataResult> {
   try {
-    const headerList = await headers();
-    const userOrgId = headerList.get('x-user-org-id');
-    const userEmail = headerList.get('x-user-email');
+    // Resolver org de forma segura (no confiar en headers)
+    const { orgId: userOrgId } = await getAuthContext();
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -77,10 +77,8 @@ export async function getDashboardData(): Promise<DashboardDataResult> {
       }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-
     // 1. Intentar consultar causas reales de la organización en Supabase Central
-    let realOrgs: DashboardOrg[] = [];
+    const realOrgs: DashboardOrg[] = [];
 
     if (userOrgId) {
       const { data: orgData } = await supabase
