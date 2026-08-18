@@ -1,10 +1,11 @@
 'use server';
 
 import { z } from 'zod';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createLocalClient } from '@/lib/supabase';
 import { encryptText, decryptText } from '@/lib/crypto';
+import { getAuthContext } from '@/lib/auth';
 
 // ============================================================
 // Schema Zod para validar las credenciales BYODB
@@ -46,29 +47,27 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
 
   const { supabase_url, supabase_anon_key } = parsed.data;
 
-  // 2. Verificar conectividad con el Supabase local ANTES de guardar
+  // 2. Resolver contexto de autenticación de forma segura (no confiar en headers)
+  const { user, orgId, role } = await getAuthContext();
+
+  if (!user || !orgId) {
+    return {
+      success: false,
+      message: 'No se pudo identificar tu organización',
+      error: 'Sesión expirada. Por favor vuelve a iniciar sesión.',
+    };
+  }
+
+  if (role !== 'owner' && role !== 'admin') {
+    return {
+      success: false,
+      message: 'Permisos insuficientes',
+      error: 'Solo los administradores o el propietario pueden modificar la configuración BYODB.',
+    };
+  }
+
+  // 3. Verificar conectividad con el Supabase local ANTES de guardar
   try {
-    // Obtenemos el org_id de antemano para inyectarlo en el cliente y probar RLS
-    const headerList = await headers();
-    const orgId = headerList.get('x-user-org-id');
-    const userRole = headerList.get('x-user-role');
-
-    if (!orgId) {
-      return {
-        success: false,
-        message: 'No se pudo identificar tu organización',
-        error: 'Sesión expirada. Por favor vuelve a iniciar sesión.',
-      };
-    }
-
-    if (userRole !== 'owner' && userRole !== 'admin') {
-      return {
-        success: false,
-        message: 'Permisos insuficientes',
-        error: 'Solo los administradores o el propietario pueden modificar la configuración BYODB.',
-      };
-    }
-
     const localClient = createLocalClient(supabase_url, supabase_anon_key, orgId);
     // Intentamos una query inócua para confirmar que la conexión es válida
     const { error: pingError } = await localClient
@@ -89,18 +88,6 @@ export async function connectByodb(formData: ConnectByodbInput): Promise<ActionR
       success: false,
       message: 'Credenciales inválidas o Supabase no accesible',
       error: 'Verifica que la URL y la anon key sean correctas y que el proyecto esté activo.',
-    };
-  }
-
-  // Obtenemos el org_id del proxy (Next.js 16)
-  const headerList = await headers();
-  const orgId = headerList.get('x-user-org-id');
-
-  if (!orgId) {
-    return {
-      success: false,
-      message: 'No se pudo identificar tu organización',
-      error: 'Sesión expirada. Por favor vuelve a iniciar sesión.',
     };
   }
 
@@ -150,8 +137,7 @@ export async function getByodbStatus(): Promise<{
   connected: boolean;
   url: string | null;
 }> {
-  const headerList = await headers();
-  const orgId = headerList.get('x-user-org-id');
+  const { orgId } = await getAuthContext();
 
   if (!orgId) return { connected: false, url: null };
 

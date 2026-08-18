@@ -76,13 +76,18 @@ export async function proxy(request: NextRequest) {
     return targetUrl;
   };
 
-  // Si estamos en entorno local (localhost), permitir acceso directo para pruebas y desarrollo
+  // Detección de entorno local (localhost / 127.0.0.1)
   const isLocalHost = request.nextUrl.hostname === 'localhost' || request.nextUrl.hostname === '127.0.0.1';
+
+  // ⚠️ Bypass de desarrollo DESHABILITADO por defecto (seguridad).
+  // Solo se activa explícitamente con ALLOW_DEV_BYPASS=true Y en localhost.
+  // En producción jamás debe estar habilitado.
+  const devBypassEnabled = isLocalHost && process.env.ALLOW_DEV_BYPASS === 'true';
 
   // Si no está autenticado
   if (!user) {
-    if (isLocalHost) {
-      // Inyectar cabeceras de prueba locales para desarrollo
+    if (devBypassEnabled) {
+      // Cabeceras de prueba SOLO para desarrollo local explícito
       requestHeaders.set('x-user-org-id', 'org-1');
       requestHeaders.set('x-user-role', 'admin');
       requestHeaders.set('x-user-email', 'dev@local.nuh.com');
@@ -101,15 +106,9 @@ export async function proxy(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!serviceRoleKey) {
-    console.error('[Proxy] WARN: No service role key found. Usando sesión del usuario.');
-    requestHeaders.set('x-user-org-id', 'org-1');
-    requestHeaders.set('x-user-role', 'owner');
-    requestHeaders.set('x-user-email', user.email || '');
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    // No conceder privilegios por defecto: denegar el acceso.
+    console.error('[Proxy] No se encontró la Service Role Key. Denegando acceso (configuración incompleta).');
+    return NextResponse.redirect(getSafeRedirectUrl('/login', 'auth_config_error'));
   }
 
   // Validación de base de datos usando Service Role Key
@@ -131,17 +130,14 @@ export async function proxy(request: NextRequest) {
     .single();
 
   if (error || !profile) {
-    console.warn('[Proxy Auth] Profile fetch fallback:', error?.message);
-    // En lugar de cerrar sesión drásticamente si falla la tabla profiles,
-    // inyectar rol por defecto para permitir acceso al MVP
-    requestHeaders.set('x-user-org-id', 'org-1');
-    requestHeaders.set('x-user-role', 'owner');
-    requestHeaders.set('x-user-email', user.email || '');
-  } else {
-    requestHeaders.set('x-user-org-id', profile.org_id);
-    requestHeaders.set('x-user-role', profile.role);
-    requestHeaders.set('x-user-email', user.email || '');
+    // No escalar a 'owner': denegar el acceso si no se puede resolver el perfil.
+    console.warn('[Proxy Auth] No se pudo resolver el perfil del usuario:', error?.message);
+    return NextResponse.redirect(getSafeRedirectUrl('/login', 'profile_not_found'));
   }
+
+  requestHeaders.set('x-user-org-id', profile.org_id);
+  requestHeaders.set('x-user-role', profile.role);
+  requestHeaders.set('x-user-email', user.email || '');
 
   return NextResponse.next({
     request: {

@@ -2,7 +2,8 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
+import { getAuthContext } from '@/lib/auth';
 
 function isUuid(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -29,9 +30,16 @@ function getAdminClient() {
 
 export async function saveN8nWebhook(webhookUrl: string) {
   try {
-    const headerList = await headers();
-    const headerOrgId = headerList.get('x-user-org-id');
-    const headerUserRole = headerList.get('x-user-role');
+    // Resolver contexto de autenticación de forma segura (no confiar en headers)
+    const { user, orgId: rawOrgId, role: userRole } = await getAuthContext();
+
+    if (!user || !rawOrgId) {
+      return { success: false, error: 'No se pudo identificar tu organización' };
+    }
+
+    if (userRole !== 'owner' && userRole !== 'admin') {
+      return { success: false, error: 'Solo los administradores o propietarios pueden configurar Webhooks' };
+    }
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -51,65 +59,23 @@ export async function saveN8nWebhook(webhookUrl: string) {
       }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    let rawOrgId = headerOrgId || 'org-1';
-    let userRole = headerUserRole || 'admin';
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id, role')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        rawOrgId = profile.org_id;
-        userRole = profile.role;
-      }
-    }
-
-    if (userRole !== 'owner' && userRole !== 'admin') {
-      throw new Error('Solo los administradores o propietarios pueden configurar Webhooks');
-    }
-
     const adminClient = getAdminClient();
     const dbClient = adminClient || supabase;
 
-    // Buscar el ID real de la organización (UUID)
-    let targetOrgId: string | null = null;
-    let currentSettings: any = {};
+    // Buscar el ID real de la organización (UUID) del usuario autenticado
+    const { data: orgData } = isUuid(rawOrgId)
+      ? await dbClient
+          .from('organizations')
+          .select('id, settings')
+          .eq('id', rawOrgId)
+          .maybeSingle()
+      : { data: null };
 
-    if (rawOrgId && isUuid(rawOrgId)) {
-      const { data: orgData } = await dbClient
-        .from('organizations')
-        .select('id, settings')
-        .eq('id', rawOrgId)
-        .maybeSingle();
-
-      if (orgData) {
-        targetOrgId = orgData.id;
-        currentSettings = orgData.settings || {};
-      }
+    if (!orgData) {
+      return { success: false, error: 'No existe ninguna organización activa en la base de datos para asignar el Webhook.' };
     }
 
-    // Fallback: Si rawOrgId no es UUID o no existía, usar la primera organización
-    if (!targetOrgId) {
-      const { data: firstOrg } = await dbClient
-        .from('organizations')
-        .select('id, settings')
-        .limit(1)
-        .maybeSingle();
-
-      if (firstOrg) {
-        targetOrgId = firstOrg.id;
-        currentSettings = firstOrg.settings || {};
-      }
-    }
-
-    if (!targetOrgId) {
-      throw new Error('No existe ninguna organización activa en la base de datos para asignar el Webhook.');
-    }
+    const currentSettings: any = orgData.settings || {};
 
     // Actualizar webhook
     const newSettings = {
@@ -120,7 +86,7 @@ export async function saveN8nWebhook(webhookUrl: string) {
     const { error: updateError } = await dbClient
       .from('organizations')
       .update({ settings: newSettings })
-      .eq('id', targetOrgId);
+      .eq('id', orgData.id);
 
     if (updateError) {
       throw new Error(`Error al actualizar organización: ${updateError.message}`);
@@ -135,8 +101,10 @@ export async function saveN8nWebhook(webhookUrl: string) {
 
 export async function getN8nWebhook() {
   try {
-    const headerList = await headers();
-    const headerOrgId = headerList.get('x-user-org-id');
+    // Resolver contexto de autenticación de forma segura (no confiar en headers)
+    const { orgId: rawOrgId } = await getAuthContext();
+
+    if (!rawOrgId) return { url: '' };
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -156,42 +124,16 @@ export async function getN8nWebhook() {
       }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-    let rawOrgId = headerOrgId || 'org-1';
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        rawOrgId = profile.org_id;
-      }
-    }
-
     const adminClient = getAdminClient();
     const dbClient = adminClient || supabase;
 
-    let orgData = null;
-    if (rawOrgId && isUuid(rawOrgId)) {
-      const { data } = await dbClient
-        .from('organizations')
-        .select('settings')
-        .eq('id', rawOrgId)
-        .maybeSingle();
-      orgData = data;
-    }
-
-    if (!orgData) {
-      const { data } = await dbClient
-        .from('organizations')
-        .select('settings')
-        .limit(1)
-        .maybeSingle();
-      orgData = data;
-    }
+    const { data: orgData } = isUuid(rawOrgId)
+      ? await dbClient
+          .from('organizations')
+          .select('settings')
+          .eq('id', rawOrgId)
+          .maybeSingle()
+      : { data: null };
 
     return { url: orgData?.settings?.n8n_webhook_url || '' };
   } catch (error) {

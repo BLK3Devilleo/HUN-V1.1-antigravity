@@ -30,8 +30,11 @@ function getSafeOrigin(request: Request): string {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
   const safeOrigin = getSafeOrigin(request);
+
+  // Sanitizar el destino `next`: solo rutas internas relativas (evita open redirect).
+  const rawNext = searchParams.get('next') ?? '/dashboard';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard';
 
   if (code) {
     const cookieStore = await cookies();
