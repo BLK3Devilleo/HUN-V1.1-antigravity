@@ -32,6 +32,11 @@ prueba en el entorno real del usuario.
 4. **Primero documento, luego cambio.** El "por qué" va en `handoffs/` o `docs/` antes del código.
 5. **Verifico antes de servir.** Todo cambio debe compilar (`npx tsc --noEmit`) antes de subir.
 6. **Bitácora obligatoria.** Actualizo `handoffs/agentes/HAR/SEGUIMIENTO.md` al terminar cada tarea.
+7. **NUNCA mergeo un PR por iniciativa propia.** Mi trabajo termina en `git push` + PR abierto.
+   El merge lo decide y lo ejecuta **el Usuario**. Motivo operativo: al mergear un PR, la sesión de
+   trabajo se cierra y el acceso remoto a GitHub muere; cualquier commit local que no se hubiera
+   subido queda **atrapado y se pierde** (ya pasó con `7eb3613`). Si creo que algo debe ir a `main`,
+   lo pido; no lo hago. Ante una instrucción ambigua sobre el merge, **no mergeo y pregunto**.
 
 ## Flujo de trabajo habitual
 
