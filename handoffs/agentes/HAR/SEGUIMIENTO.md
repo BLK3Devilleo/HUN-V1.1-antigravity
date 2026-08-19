@@ -4,6 +4,65 @@
 
 ---
 
+## 2026-08-19 — Auditoría visual (sin cambios) + APIs de media/galería
+
+**Contexto:** el Usuario reportó dos cosas: (1) sospecha de que los cambios de backend habían
+alterado el diseño de Don Emilio, y (2) *"agregar imagen en galería me manda a dashboard"*.
+
+### Auditoría visual — veredicto: diseño INTACTO ✅
+
+Verificado por tres vías independientes:
+
+| Comprobación | Resultado |
+|---|---|
+| Commits sobre `components/`, `globals.css`, `layout.tsx` | **0** en toda la rama |
+| Líneas con `className`/`style`/`padding`/`margin`/`gap` en el diff | **Ninguna** |
+| Hash de clases CSS por página vs. `main` | **142 clases idénticas** (22/13/13/34/60) |
+
+En las 5 páginas solo se cambiaron imports y la resolución de identidad. Ningún margen, padding
+ni `vh/vw` fue tocado.
+
+### Diagnóstico del bug de la galería
+
+El botón "Subir Nuevo Recurso" es un `<Link href="/dashboard">` (`GalleryWorkspace.tsx:76` y
+`:103`). **No es una regresión**: está así desde antes. Pero al seguir el hilo apareció el
+problema de fondo: **la subida no persiste en absoluto**.
+
+```
+Galería → /dashboard → input file → URL.createObjectURL() → blob: efímero
+                                          ↓
+                              mediaUrls: ['blob:...'] → publishPostAction
+```
+
+El servidor no puede leer un `blob:`; mi validación lo descarta (`publish.media_skipped`). Nada
+llega a R2, nada se escribe en `causes.media_url`, y por eso la galería siempre está vacía.
+
+### Hecho en esta entrada
+
+| Archivo | Qué aporta |
+|---|---|
+| `hooks/useMediaUpload.ts` (nuevo) | Encadena presign → PUT a R2 → `saveMediaRecord` en **una sola llamada**. Expone `progress`, `currentIndex/totalFiles` y `errors`. Sube en serie (en paralelo, N vídeos saturan la subida y el progreso deja de ser legible). |
+| `app/actions/gallery.ts` (nuevo) | `getGalleryItems()` extrae la consulta que estaba embebida en la página, para poder refrescar el listado tras subir sin recargar. Filtra `media_url` vacíos en SQL. |
+| `app/(dashboard)/dashboard/gallery/page.tsx` | Usa la nueva acción. **Cero cambios de JSX** (clases verificadas idénticas). |
+| `handoffs/mensajes/2026-08-19_HAR-a-DonEmilio_cableado-subida-media.md` | Handoff con el punto exacto de enganche (`dashboard/page.tsx:108`), ejemplo de código y prueba de aceptación. |
+
+### Verificación
+
+| Comprobación | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ 0 errores |
+| `npx eslint` (lib, actions, api, hooks, proxy, dashboard) | ✅ 0 errores |
+| `npm audit --omit=dev` | ✅ 0 vulnerabilidades |
+| Runtime | `/dashboard/gallery` → 307 login · presign con cabecera falsa → **401 JSON** · health → 200 |
+| Clases CSS de la galería vs `main` | ✅ idénticas |
+
+**Delegado a Don Emilio:** cablear `handleFileSelect` (zona congelada) y decidir si el botón de
+la galería abre input propio o sigue navegando. El backend ya está listo; falta el cable de UI.
+
+**Pendiente HAR:** tests automatizados (Q-02) y endpoint de borrado de recursos si se pide.
+
+---
+
 ## 2026-08-19 — Mejoras de backend: arquitectura de datos, seguridad y resiliencia
 
 **Contexto:** revisión de `docs/ARQUITECTURA-PROYECTO-V2.md` + lectura del código real para atacar

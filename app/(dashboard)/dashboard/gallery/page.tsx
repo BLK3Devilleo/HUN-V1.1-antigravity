@@ -1,33 +1,13 @@
 import Link from 'next/link';
 import { ArrowLeft, Image as ImageIcon, Sparkles } from 'lucide-react';
 import GalleryWorkspace from '@/components/dashboard/GalleryWorkspace';
-import { getAuthContext } from '@/lib/auth';
-import { createSessionClient } from '@/lib/supabase-server';
+import { getGalleryItems } from '@/app/actions/gallery';
 
 export default async function GalleryPage() {
-  // Fuente de verdad: sesión + tabla `profiles`, no la cabecera `x-user-org-id`
-  // (una cabecera puede falsificarse si algo llega sin pasar por el proxy).
-  const { orgId } = await getAuthContext();
-
-  const supabase = await createSessionClient();
-
-  const { data: causes } = orgId
-    ? await supabase
-        .from('causes')
-        .select('id, title, media_url, created_at, status')
-        .eq('org_id', orgId)
-        .order('created_at', { ascending: false })
-    : { data: [] };
-
-  const galleryItems = (causes || [])
-    .filter(c => c.media_url && c.media_url.trim() !== '')
-    .map(c => ({
-      id: c.id,
-      title: c.title || 'Recurso subido',
-      media_url: c.media_url,
-      created_at: c.created_at,
-      status: c.status,
-    }));
+  // La consulta vive en `app/actions/gallery.ts` para que la UI pueda
+  // refrescar el listado tras subir un archivo, sin recargar la página.
+  // La organización se resuelve allí desde la sesión, no desde cabeceras.
+  const { items: galleryItems } = await getGalleryItems();
 
   return (
     <div className="min-h-screen bg-[#F6F6F6] text-black px-4 py-8 sm:px-8 md:px-12 font-sans">
